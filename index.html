@@ -40,7 +40,7 @@ canvas{display:block;}
 <canvas id="mc"></canvas>
 <div id="intro-msg" style="font-size:13px;font-weight:800;color:#fff;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.3);padding:2px 0;">👆 מצא את שמות המשפחה!</div>
 <div id="timed-msg"></div>
-<div id="dbg" style="font-size:10px;color:rgba(255,255,255,0.8);text-align:center;max-width:340px;min-height:14px;"></div>
+<div id="dbg" style="font-size:11px;color:#fff;background:rgba(0,0,0,0.35);padding:6px 10px;border-radius:8px;max-width:340px;min-height:20px;text-align:right;direction:ltr;line-height:1.6;"></div>
 <div id="msg"></div>
 <div id="pbar"></div>
 <div id="found"></div>
@@ -170,7 +170,13 @@ document.getElementById('btn-music').style.display='none';
 // Strategy: store pending text, fire it at next touchstart
 
 var pendingTexts=[];
-function DBG(t){var d=document.getElementById('dbg');if(d)d.textContent=t;}
+var dbgLog=[];
+function DBG(t){
+  dbgLog.push(t);
+  if(dbgLog.length>12)dbgLog.shift();
+  var d=document.getElementById('dbg');
+  if(d)d.innerHTML=dbgLog.join('<br>');
+}
 var speakTimer=null;
 
 function getHebVoice(){
@@ -197,18 +203,17 @@ function doSpeakNext(){
   var text=pendingTexts.shift();
   DBG('saying: '+text);
   try{
-    window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(text);
     var v=getHebVoice();
-    DBG('voice:'+(v?v.name:'none')+' text:'+text);
+    DBG('v:'+(v?v.name:'?')+' t:'+text);
     if(v)u.voice=v;
     u.lang='he-IL';u.rate=0.85;u.pitch=1.1;u.volume=1;
-    u.onstart=function(){DBG('speaking: '+text);};
-    u.onend=function(){DBG('done: '+text);setTimeout(doSpeakNext,200);};
-    u.onerror=function(e){DBG('ERR:'+e.error+' '+text);setTimeout(doSpeakNext,200);};
+    u.onstart=function(){DBG('START:'+text);};
+    u.onend=function(){DBG('END:'+text);doSpeakNext();};
+    u.onerror=function(e){DBG('ERR:'+e.error);doSpeakNext();};
     window.speechSynthesis.speak(u);
-    DBG('speak() called, speaking='+window.speechSynthesis.speaking);
-  }catch(e){DBG('CATCH:'+e);setTimeout(doSpeakNext,300);}
+    DBG('sp='+window.speechSynthesis.speaking+' pd='+window.speechSynthesis.pending);
+  }catch(e){DBG('EX:'+e.message);doSpeakNext();}
 }
 
 function drainSpeechQueue(){flushSpeech();}
