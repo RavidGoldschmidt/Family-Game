@@ -173,49 +173,63 @@ document.getElementById('btn-music').addEventListener('click',function(){
   else{btn.textContent='🎵 מוזיקה';btn.classList.remove('muted');startBg();}
 });
 
-// ── SPEECH SYSTEM (iOS Safari compatible) ──────────────
-var speechQueue=[];    // texts waiting to be spoken
-var isSpeaking=false;
+// ── SPEECH SYSTEM — iOS Safari foolproof ───────────────
+// Rule: speak() must be called synchronously in touchstart/click
+// Strategy: store pending text, fire it at next touchstart
 
-function getHebrewVoice(){
+var pendingTexts=[];   // queue of texts to speak
+var speakTimer=null;
+
+function getHebVoice(){
   var vs=window.speechSynthesis.getVoices();
-  for(var i=0;i<vs.length;i++){if(vs[i].lang&&vs[i].lang.toLowerCase().indexOf('he')===0)return vs[i];}
+  for(var i=0;i<vs.length;i++){
+    if(vs[i].lang&&vs[i].lang.toLowerCase().indexOf('he')>=0)return vs[i];
+  }
   return null;
 }
 
-// Queue a text — will be spoken on next touch
-function queueSpeech(text){speechQueue.push(text);}
+function queueSpeech(t){pendingTexts.push(t);}
 
-// Speak immediately (call ONLY from within a touch/click handler)
-function speakNow(text,onDone){
+// Called synchronously inside touchstart — guaranteed to work on iOS
+function flushSpeech(){
+  if(!pendingTexts.length)return;
+  var text=pendingTexts.shift();
   try{
     window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(text);
-    var hv=getHebrewVoice();if(hv)u.voice=hv;
+    var v=getHebVoice();if(v)u.voice=v;
     u.lang='he-IL';u.rate=0.85;u.pitch=1.1;u.volume=1;
-    u.onend=function(){isSpeaking=false;if(onDone)onDone();};
-    u.onerror=function(){isSpeaking=false;if(onDone)onDone();};
-    isSpeaking=true;
+    u.onend=function(){
+      if(pendingTexts.length){
+        // Chain next utterance — still works because we're in onend of a speech
+        setTimeout(function(){flushSpeechDirect();},250);
+      }
+    };
     window.speechSynthesis.speak(u);
-  }catch(e){isSpeaking=false;if(onDone)onDone();}
+  }catch(e){}
 }
 
-// Speak a sequence (call from touch handler)
+// For chaining inside onend (not in touch handler)
+function flushSpeechDirect(){
+  if(!pendingTexts.length)return;
+  var text=pendingTexts.shift();
+  try{
+    var u=new SpeechSynthesisUtterance(text);
+    var v=getHebVoice();if(v)u.voice=v;
+    u.lang='he-IL';u.rate=0.85;u.pitch=1.1;u.volume=1;
+    u.onend=function(){if(pendingTexts.length)setTimeout(flushSpeechDirect,250);};
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+function drainSpeechQueue(){flushSpeech();}
+function speak(t){queueSpeech(t);flushSpeech();}
+function speakNow(t){queueSpeech(t);flushSpeech();}
 function speakSequence(texts,idx){
   if(!idx)idx=0;
-  if(idx>=texts.length)return;
-  speakNow(texts[idx],function(){setTimeout(function(){speakSequence(texts,idx+1);},200);});
+  for(var i=idx;i<texts.length;i++)pendingTexts.push(texts[i]);
+  flushSpeech();
 }
-
-// Drain queue — call at start of every touch handler
-function drainSpeechQueue(){
-  if(speechQueue.length===0||isSpeaking)return;
-  var next=speechQueue.shift();
-  speakNow(next,function(){drainSpeechQueue();});
-}
-
-// Legacy: speak() for single words in touch context
-function speak(t){speakNow(t,null);}
 if(window.speechSynthesis){
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged=function(){window.speechSynthesis.getVoices();};
@@ -413,15 +427,14 @@ function findNode(cx,cy){
 }
 function onS(cx,cy){
   unlockAC();startBg();
-  drainSpeechQueue(); // iOS: drain pending speech in touch context
+  flushSpeech(); // iOS: speak any pending text at touchstart
   var n=findNode(cx,cy);if(n===-1){encourage();return;}if(n>=0){drag=true;sel=[n];pClick();draw();renderWD();}}
 function onM(cx,cy){if(!drag)return;var n=findNode(cx,cy);if(n>=0&&(sel.length===0||sel[sel.length-1]!==n)){sel.push(n);pClick();draw();renderWD();}}
 function onE(){
   if(!drag&&sel.length===0)return;
   drag=false;
   submit();
-  // Drain any queued speech — touchend IS a valid gesture on iOS
-  setTimeout(function(){drainSpeechQueue();},100);
+  flushSpeech(); // speak found word immediately (we're in touchend)
 }
 
 MC.addEventListener('touchstart',function(e){e.preventDefault();e.stopPropagation();if(e.touches.length)onS(e.touches[0].clientX,e.touches[0].clientY);},{passive:false,capture:true});
@@ -445,8 +458,6 @@ function submit(){
     found.push(word);
     LAYOUT.forEach(function(L){if(L.word!==word)return;L.word.split('').forEach(function(l,i){var r=L.dir==='h'?L.row:L.row+i,c=L.dir==='h'?L.col+i:L.col;if(grid[r]&&grid[r][c])grid[r][c].revealed=true;});});
     drawCW();pOk();queueSpeech(word);setFace('wink',1500);draw();
-    // Drain immediately — we ARE in a touch handler (touchend)
-    drainSpeechQueue();
     msg.textContent='✨ '+word+' – נמצא!';
     var ch=document.createElement('div');ch.className='fc';ch.textContent=word;document.getElementById('found').appendChild(ch);
     setTimeout(function(){if(msg.textContent.indexOf('נמצא')>=0)msg.textContent='';},1500);
@@ -455,9 +466,12 @@ function submit(){
       setTimeout(function(){
         petals=TP;setFace('wink');draw();pWin();
         msg.textContent='🌸 כל המשפחה נמצאה! 🌸';
-        // Victory speech — we ARE in touch context here ✓
-        var vTexts=['כל הכבוד! עשית עבודה נהדרת'].concat(NAMES).concat(['כמה אנחנו ביחד. משפחה גדולה ומיוחדת! המשך יום מהנה']);
-        speakSequence(vTexts,0);
+        // Victory — queue all names, start speaking immediately
+        pendingTexts=[];
+        pendingTexts.push('כל הכבוד! עשית עבודה נהדרת');
+        for(var ni=0;ni<NAMES.length;ni++)pendingTexts.push(NAMES[ni]);
+        pendingTexts.push('כמה אנחנו ביחד. משפחה גדולה ומיוחדת! המשך יום מהנה');
+        flushSpeech();
       },400);
     }
   } else if(sel.length>=2){
