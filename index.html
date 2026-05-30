@@ -193,9 +193,8 @@ function queueSpeech(t){pendingTexts.push(t);DBG('queued:'+t+' ('+pendingTexts.l
 function killAC(){}
 
 function flushSpeech(){
-  DBG('flush: '+pendingTexts.length+' pending');
-  if(!pendingTexts.length)return;
-  doSpeakNext();
+  DBG('queued:'+pendingTexts.length);
+  // Speech fires on next touchstart (iOS requires direct gesture)
 }
 
 function doSpeakNext(){
@@ -426,8 +425,29 @@ function findNode(cx,cy){
   return best;
 }
 function onS(cx,cy){
-  unlockAC();startBg();
-  flushSpeech(); // iOS: speak any pending text at touchstart
+  // iOS: speak() MUST be called from touchstart directly
+  // Speak any pending texts here (touchstart = guaranteed gesture)
+  if(pendingTexts.length){
+    var text=pendingTexts.shift();
+    try{
+      var u=new SpeechSynthesisUtterance(text);
+      var v=getHebVoice();if(v)u.voice=v;
+      u.lang='he-IL';u.rate=0.85;u.pitch=1.1;u.volume=1;
+      u.onend=function(){
+        if(pendingTexts.length){
+          // Chain remaining — onend context works too
+          var t2=pendingTexts.shift();
+          var u2=new SpeechSynthesisUtterance(t2);
+          var v2=getHebVoice();if(v2)u2.voice=v2;
+          u2.lang='he-IL';u2.rate=0.85;u2.pitch=1.1;u2.volume=1;
+          u2.onend=arguments.callee; // recurse
+          window.speechSynthesis.speak(u2);
+        }
+      };
+      window.speechSynthesis.speak(u);
+      DBG('onS speak:'+text+' sp='+window.speechSynthesis.speaking);
+    }catch(e){DBG('onS err:'+e);}
+  }
   var n=findNode(cx,cy);if(n===-1){encourage();return;}if(n>=0){drag=true;sel=[n];pClick();draw();renderWD();}}
 function onM(cx,cy){if(!drag)return;var n=findNode(cx,cy);if(n>=0&&(sel.length===0||sel[sel.length-1]!==n)){sel.push(n);pClick();draw();renderWD();}}
 function onE(){
@@ -487,8 +507,14 @@ function submit(){
   sel=[];draw();renderWD();
 }
 
-document.getElementById('bdel').addEventListener('click',function(){unlockAC();startBg();flushSpeech();sel=[];draw();renderWD();document.getElementById('msg').textContent='';});
-document.getElementById('bsh').addEventListener('click',function(){unlockAC();startBg();flushSpeech();shuf(tokens);sel=[];draw();renderWD();});
+document.getElementById('bdel').addEventListener('click',function(){
+  if(pendingTexts.length){var t=pendingTexts.shift();var u=new SpeechSynthesisUtterance(t);var v=getHebVoice();if(v)u.voice=v;u.lang='he-IL';u.volume=1;window.speechSynthesis.speak(u);}
+  sel=[];draw();renderWD();document.getElementById('msg').textContent='';
+});
+document.getElementById('bsh').addEventListener('click',function(){
+  if(pendingTexts.length){var t=pendingTexts.shift();var u=new SpeechSynthesisUtterance(t);var v=getHebVoice();if(v)u.voice=v;u.lang='he-IL';u.volume=1;window.speechSynthesis.speak(u);}
+  shuf(tokens);sel=[];draw();renderWD();
+});
 
 // ── ZOOM CROSSWORD ────────────────────────────────────
 function showZoomCW(){
