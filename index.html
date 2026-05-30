@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Audio Test 5</title>
+<title>Audio Test 6</title>
 <style>
 body{font-family:sans-serif;padding:20px;background:#e8f4fd;direction:rtl;}
 button{padding:20px;font-size:18px;margin:8px 0;border-radius:12px;border:none;background:#1565c0;color:#fff;cursor:pointer;display:block;width:100%;}
@@ -11,22 +11,22 @@ button{padding:20px;font-size:18px;margin:8px 0;border-radius:12px;border:none;b
 </style>
 </head>
 <body>
-<h2>בדיקה 5 - audio tag + speech</h2>
+<h2>בדיקה 6</h2>
 
-<!-- Music via HTML audio tag (no AudioContext) -->
-<audio id="bgmusic" loop preload="auto">
-  <source src="https://upload.wikimedia.org/wikipedia/commons/transcoded/8/8b/Johann_Pachelbel_-_Canon_in_D_major_%28piano_version%29.ogg/Johann_Pachelbel_-_Canon_in_D_major_%28piano_version%29.ogg.mp3" type="audio/mp3">
+<audio id="bg" loop preload="none">
+  <!-- Free CC0 music from pixabay CDN -->
+  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3" type="audio/mp3">
 </audio>
 
-<button id="b1">הפעל מוזיקה</button>
-<button id="b2">דבר עם מוזיקה</button>
-<button id="b3">עצור הכל</button>
+<button id="b1">🎵 הפעל מוזיקה</button>
+<button id="b2">🎵🗣️ מוזיקה + קול יחד</button>
+<button id="b3">⏹ עצור</button>
 <div id="log">לחץ...</div>
 <script>
 var log=document.getElementById('log');
 function L(t){log.innerHTML+=t+'<br>';}
-var music=document.getElementById('bgmusic');
-music.volume=0.3;
+var bg=document.getElementById('bg');
+bg.volume=0.25;
 
 function getVoice(){
   var vs=window.speechSynthesis.getVoices();
@@ -47,25 +47,29 @@ function say(text,cb){
 
 document.getElementById('b1').addEventListener('click',function(){
   log.innerHTML='מפעיל מוזיקה...<br>';
-  music.play().then(function(){L('🎵 מוזיקה רצה!');}).catch(function(e){L('✗ מוזיקה: '+e);});
+  bg.load();
+  bg.play()
+    .then(function(){L('🎵 מוזיקה עובדת!');})
+    .catch(function(e){L('✗ שגיאה: '+e.message);});
 });
 
 document.getElementById('b2').addEventListener('click',function(){
-  log.innerHTML='מוזיקה + קול:<br>';
-  music.play().catch(function(){});
-  var names=['אורי','רוחמה','נגה'];
+  log.innerHTML='מוזיקה + קול ביחד:<br>';
+  bg.load();
+  bg.play().catch(function(){});
+  var names=['כל הכבוד','אורי','רוחמה','נגה'];
   var i=0;
   function next(){
-    if(i>=names.length){L('סיים!');return;}
+    if(i>=names.length){L('🎉 סיים!');return;}
     say(names[i++],next);
   }
   next();
 });
 
 document.getElementById('b3').addEventListener('click',function(){
-  music.pause();music.currentTime=0;
+  bg.pause();bg.currentTime=0;
   window.speechSynthesis.cancel();
-  log.innerHTML='עצרנו הכל<br>';
+  log.innerHTML='עצרנו<br>';
 });
 
 window.speechSynthesis.getVoices();
