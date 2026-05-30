@@ -153,7 +153,7 @@ var face='happy',fTimer=null,bubOn=false,bubText='',bTimer=null;
 var ENC=['!כל הכבוד','!יופי','!מעולה','!אלוף','!נפלא','!תותח','!מדהים','!בהצלחה'];
 var AC=null,bgOn=false,musicMuted=false;
 
-function unlockAC(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();}
+function unlockAC(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}if(AC.state==='suspended'){try{AC.resume();}catch(e){}}}
 function sfx(f,d,tp,v,dl){if(!AC)return;try{var o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(AC.destination);o.type=tp||'sine';o.frequency.value=f;var t=AC.currentTime+(dl||0);g.gain.setValueAtTime(v||0.18,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.start(t);o.stop(t+d+0.01);}catch(e){}}
 function tone(f,d,tp,v,dl){if(!AC||musicMuted)return;sfx(f,d,tp,v,dl);}
 function pClick(){sfx(900,0.04,'sine',0.08);}
@@ -161,9 +161,24 @@ function pOk(){[523,659,784,1047].forEach(function(f,i){sfx(f,0.18,'sine',0.2,i*
 function pBad(){sfx(230,0.18,'sawtooth',0.12);}
 function pWin(){[523,659,784,1047,880,1047,784,1047].forEach(function(f,i){sfx(f,0.18,'square',0.15,i*0.11);});}
 function startBg(){
-  if(bgOn||!AC||musicMuted)return;bgOn=true;
-  var bass=[293,220,246,184,196,293,196,220],ch=[[293,370,440],[220,277,330],[246,293,370],[184,247,311],[196,246,294],[293,370,440],[196,246,294],[220,277,330]],i=0;
-  function tick(){if(!bgOn)return;tone(bass[i%8],1.8,'sine',0.05);ch[i%8].forEach(function(f){tone(f,1.7,'sine',0.03);});i++;setTimeout(tick,2100);}tick();
+  if(bgOn||musicMuted)return;
+  // Create AudioContext if needed
+  if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}
+  // Resume if suspended (iOS requires this after user gesture)
+  function doStart(){
+    if(bgOn)return;
+    bgOn=true;
+    var bass=[293,220,246,184,196,293,196,220];
+    var ch=[[293,370,440],[220,277,330],[246,293,370],[184,247,311],[196,246,294],[293,370,440],[196,246,294],[220,277,330]];
+    var i=0;
+    function tick(){if(!bgOn)return;tone(bass[i%8],1.8,'sine',0.05);ch[i%8].forEach(function(f){tone(f,1.7,'sine',0.03);});i++;setTimeout(tick,2100);}
+    tick();
+  }
+  if(AC.state==='suspended'){
+    AC.resume().then(doStart).catch(doStart);
+  } else {
+    doStart();
+  }
 }
 document.getElementById('btn-music').addEventListener('click',function(){
   drainSpeechQueue();
@@ -486,8 +501,8 @@ function submit(){
   sel=[];draw();renderWD();
 }
 
-document.getElementById('bdel').addEventListener('click',function(){drainSpeechQueue();sel=[];draw();renderWD();document.getElementById('msg').textContent='';});
-document.getElementById('bsh').addEventListener('click',function(){drainSpeechQueue();shuf(tokens);sel=[];draw();renderWD();});
+document.getElementById('bdel').addEventListener('click',function(){unlockAC();startBg();flushSpeech();sel=[];draw();renderWD();document.getElementById('msg').textContent='';});
+document.getElementById('bsh').addEventListener('click',function(){unlockAC();startBg();flushSpeech();shuf(tokens);sel=[];draw();renderWD();});
 
 // ── ZOOM CROSSWORD ────────────────────────────────────
 function showZoomCW(){
@@ -524,7 +539,7 @@ function showZoomCW(){
 }
 var zoomTimer=null;
 document.getElementById('btn-zoom').addEventListener('click',function(){drainSpeechQueue();showZoomCW();});
-document.getElementById('cw-wrap').addEventListener('click',function(){drainSpeechQueue();showZoomCW();});
+document.getElementById('cw-wrap').addEventListener('click',function(){unlockAC();startBg();flushSpeech();showZoomCW();});
 document.getElementById('zoom-overlay').addEventListener('click',function(){
   if(zoomTimer)clearTimeout(zoomTimer);
   this.style.display='none';
