@@ -3,47 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speech Test 3</title>
+<title>Speech Test 4</title>
 <style>
 body{font-family:sans-serif;padding:20px;background:#e8f4fd;direction:rtl;}
 button{padding:20px;font-size:18px;margin:8px 0;border-radius:12px;border:none;background:#1565c0;color:#fff;cursor:pointer;display:block;width:100%;}
-#log{margin-top:16px;padding:12px;background:#fff;border-radius:8px;font-size:14px;line-height:2;min-height:80px;}
+#log{margin-top:16px;padding:12px;background:#fff;border-radius:8px;font-size:14px;line-height:2;}
 </style>
 </head>
 <body>
-<h2>בדיקה 3 - הפתרון</h2>
-<button id="b1">שלב 1: הפעל מוזיקה</button>
-<button id="b2">שלב 2: סגור AC ודבר</button>
-<button id="b3">שלב 3: הפעל מוזיקה שוב</button>
-<button id="b4">בדיקה משולבת (כמו במשחק)</button>
-<div id="log">לחץ שלב 1 קודם...</div>
+<h2>בדיקה 4 - gain=0</h2>
+<button id="b1">בדיקה: מוזיקה + קול (gain=0)</button>
+<button id="b2">בדיקה: קול ישיר בלי כלום</button>
+<div id="log">לחץ...</div>
 <script>
-var L=function(t){document.getElementById('log').innerHTML+=t+'<br>';};
-var AC=null, bgOn=false;
+var log=document.getElementById('log');
+function L(t){log.innerHTML+=t+'<br>';}
 
-function makeAC(cb){
-  AC=new(window.AudioContext||window.webkitAudioContext)();
-  if(AC.state==='suspended') AC.resume().then(cb); else cb();
-}
-
-function startMusic(){
-  if(bgOn)return;
-  makeAC(function(){
-    bgOn=true; L('🎵 מוזיקה רצה, AC.state='+AC.state);
-    var bass=[293,220,246,184],i=0;
-    function tick(){
-      if(!bgOn||!AC)return;
-      var o=AC.createOscillator(),g=AC.createGain();
-      o.connect(g);g.connect(AC.destination);
-      o.frequency.value=bass[i%4];
-      g.gain.setValueAtTime(0.08,AC.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+1.8);
-      o.start();o.stop(AC.currentTime+1.9);
-      i++;setTimeout(tick,2100);
-    }
-    tick();
-  });
-}
+var AC=null,masterGain=null,bgOn=false;
 
 function getVoice(){
   var vs=window.speechSynthesis.getVoices();
@@ -59,52 +35,61 @@ function sayWord(text,cb){
   u.lang='he-IL';u.rate=0.85;u.volume=1;
   u.onstart=function(){L('▶ '+text);};
   u.onend=function(){L('✓ '+text);if(cb)setTimeout(cb,200);};
-  u.onerror=function(e){L('✗ '+text+' err:'+e.error);if(cb)setTimeout(cb,200);};
+  u.onerror=function(e){L('✗ err:'+e.error);if(cb)setTimeout(cb,200);};
   window.speechSynthesis.speak(u);
 }
 
+function startMusic(cb){
+  AC=new(window.AudioContext||window.webkitAudioContext)();
+  masterGain=AC.createGain();
+  masterGain.connect(AC.destination);
+  masterGain.gain.value=0.15;
+  if(AC.state==='suspended'){AC.resume().then(function(){bgOn=true;doMusic();if(cb)cb();});}
+  else{bgOn=true;doMusic();if(cb)cb();}
+}
+function doMusic(){
+  if(!bgOn||!AC)return;
+  var o=AC.createOscillator(),g=AC.createGain();
+  o.connect(g);g.connect(masterGain);
+  o.frequency.value=293;
+  g.gain.setValueAtTime(0.5,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+1.8);
+  o.start();o.stop(AC.currentTime+1.9);
+  setTimeout(doMusic,2100);
+}
+
+// TEST 1: mute gain before speaking
 document.getElementById('b1').addEventListener('click',function(){
-  document.getElementById('log').innerHTML='שלב 1:<br>';
-  startMusic();
-});
-
-document.getElementById('b2').addEventListener('click',function(){
-  document.getElementById('log').innerHTML='שלב 2 - סוגר AC ומדבר:<br>';
-  bgOn=false;
-  if(AC){AC.close().then(function(){
-    AC=null;
-    L('AC סגור');
-    sayWord('שלום משפחה');
-  });}else{
-    sayWord('שלום משפחה');
-  }
-});
-
-document.getElementById('b3').addEventListener('click',function(){
-  document.getElementById('log').innerHTML='שלב 3 - מוזיקה שוב:<br>';
-  bgOn=false; AC=null;
-  startMusic();
-});
-
-document.getElementById('b4').addEventListener('click',function(){
-  document.getElementById('log').innerHTML='בדיקה משולבת:<br>';
-  // Start music
-  startMusic();
-  // After 2 sec, close AC and speak names
-  setTimeout(function(){
-    L('סוגר AC...');
-    bgOn=false;
-    if(AC){AC.close().then(function(){
-      AC=null; L('AC סגור, מדבר...');
-      var names=['אורי','רוחמה','נגה'];
-      var i=0;
-      function next(){
-        if(i>=names.length){L('סיים! מחדש מוזיקה');startMusic();return;}
-        sayWord(names[i++],next);
+  log.innerHTML='בדיקה 1:<br>';
+  startMusic(function(){
+    L('מוזיקה רצה');
+    // Mute immediately (synchronous - no await)
+    masterGain.gain.setValueAtTime(0,AC.currentTime);
+    L('gain=0, מדבר...');
+    var names=['אורי','רוחמה','נגה'];
+    var i=0;
+    function next(){
+      if(i>=names.length){
+        L('סיים! מחדש מוזיקה');
+        masterGain.gain.setValueAtTime(0.15,AC.currentTime);
+        return;
       }
-      next();
-    });}
-  },2000);
+      sayWord(names[i++],next);
+    }
+    next();
+  });
+});
+
+// TEST 2: speak with NO AudioContext at all
+document.getElementById('b2').addEventListener('click',function(){
+  log.innerHTML='בדיקה 2 - קול בלי AC:<br>';
+  var names=['אורי','רוחמה','נגה','כל הכבוד'];
+  var i=0;
+  function next(){
+    if(i>=names.length){L('סיים!');return;}
+    sayWord(names[i++],next);
+  }
+  next();
 });
 
 window.speechSynthesis.getVoices();
