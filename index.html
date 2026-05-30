@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speech Test 4</title>
+<title>Audio Test 5</title>
 <style>
 body{font-family:sans-serif;padding:20px;background:#e8f4fd;direction:rtl;}
 button{padding:20px;font-size:18px;margin:8px 0;border-radius:12px;border:none;background:#1565c0;color:#fff;cursor:pointer;display:block;width:100%;}
@@ -11,15 +11,22 @@ button{padding:20px;font-size:18px;margin:8px 0;border-radius:12px;border:none;b
 </style>
 </head>
 <body>
-<h2>בדיקה 4 - gain=0</h2>
-<button id="b1">בדיקה: מוזיקה + קול (gain=0)</button>
-<button id="b2">בדיקה: קול ישיר בלי כלום</button>
+<h2>בדיקה 5 - audio tag + speech</h2>
+
+<!-- Music via HTML audio tag (no AudioContext) -->
+<audio id="bgmusic" loop preload="auto">
+  <source src="https://upload.wikimedia.org/wikipedia/commons/transcoded/8/8b/Johann_Pachelbel_-_Canon_in_D_major_%28piano_version%29.ogg/Johann_Pachelbel_-_Canon_in_D_major_%28piano_version%29.ogg.mp3" type="audio/mp3">
+</audio>
+
+<button id="b1">הפעל מוזיקה</button>
+<button id="b2">דבר עם מוזיקה</button>
+<button id="b3">עצור הכל</button>
 <div id="log">לחץ...</div>
 <script>
 var log=document.getElementById('log');
 function L(t){log.innerHTML+=t+'<br>';}
-
-var AC=null,masterGain=null,bgOn=false;
+var music=document.getElementById('bgmusic');
+music.volume=0.3;
 
 function getVoice(){
   var vs=window.speechSynthesis.getVoices();
@@ -27,69 +34,38 @@ function getVoice(){
     if(vs[i].lang&&vs[i].lang.startsWith('he'))return vs[i];
   return null;
 }
-
-function sayWord(text,cb){
+function say(text,cb){
   window.speechSynthesis.cancel();
   var u=new SpeechSynthesisUtterance(text);
   var v=getVoice();if(v)u.voice=v;
   u.lang='he-IL';u.rate=0.85;u.volume=1;
   u.onstart=function(){L('▶ '+text);};
   u.onend=function(){L('✓ '+text);if(cb)setTimeout(cb,200);};
-  u.onerror=function(e){L('✗ err:'+e.error);if(cb)setTimeout(cb,200);};
+  u.onerror=function(e){L('✗ '+e.error);if(cb)setTimeout(cb,200);};
   window.speechSynthesis.speak(u);
 }
 
-function startMusic(cb){
-  AC=new(window.AudioContext||window.webkitAudioContext)();
-  masterGain=AC.createGain();
-  masterGain.connect(AC.destination);
-  masterGain.gain.value=0.15;
-  if(AC.state==='suspended'){AC.resume().then(function(){bgOn=true;doMusic();if(cb)cb();});}
-  else{bgOn=true;doMusic();if(cb)cb();}
-}
-function doMusic(){
-  if(!bgOn||!AC)return;
-  var o=AC.createOscillator(),g=AC.createGain();
-  o.connect(g);g.connect(masterGain);
-  o.frequency.value=293;
-  g.gain.setValueAtTime(0.5,AC.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+1.8);
-  o.start();o.stop(AC.currentTime+1.9);
-  setTimeout(doMusic,2100);
-}
-
-// TEST 1: mute gain before speaking
 document.getElementById('b1').addEventListener('click',function(){
-  log.innerHTML='בדיקה 1:<br>';
-  startMusic(function(){
-    L('מוזיקה רצה');
-    // Mute immediately (synchronous - no await)
-    masterGain.gain.setValueAtTime(0,AC.currentTime);
-    L('gain=0, מדבר...');
-    var names=['אורי','רוחמה','נגה'];
-    var i=0;
-    function next(){
-      if(i>=names.length){
-        L('סיים! מחדש מוזיקה');
-        masterGain.gain.setValueAtTime(0.15,AC.currentTime);
-        return;
-      }
-      sayWord(names[i++],next);
-    }
-    next();
-  });
+  log.innerHTML='מפעיל מוזיקה...<br>';
+  music.play().then(function(){L('🎵 מוזיקה רצה!');}).catch(function(e){L('✗ מוזיקה: '+e);});
 });
 
-// TEST 2: speak with NO AudioContext at all
 document.getElementById('b2').addEventListener('click',function(){
-  log.innerHTML='בדיקה 2 - קול בלי AC:<br>';
-  var names=['אורי','רוחמה','נגה','כל הכבוד'];
+  log.innerHTML='מוזיקה + קול:<br>';
+  music.play().catch(function(){});
+  var names=['אורי','רוחמה','נגה'];
   var i=0;
   function next(){
     if(i>=names.length){L('סיים!');return;}
-    sayWord(names[i++],next);
+    say(names[i++],next);
   }
   next();
+});
+
+document.getElementById('b3').addEventListener('click',function(){
+  music.pause();music.currentTime=0;
+  window.speechSynthesis.cancel();
+  log.innerHTML='עצרנו הכל<br>';
 });
 
 window.speechSynthesis.getVoices();
