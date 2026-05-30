@@ -248,6 +248,12 @@ function speakSequence(texts,idx){
 if(window.speechSynthesis){
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged=function(){window.speechSynthesis.getVoices();};
+  // iOS Safari keepalive: prevents speech from pausing mid-sequence
+  setInterval(function(){
+    if(window.speechSynthesis.speaking&&window.speechSynthesis.paused){
+      window.speechSynthesis.resume();
+    }
+  },5000);
 }
 function setFace(s,d){face=s;if(fTimer)clearTimeout(fTimer);fTimer=null;if(d>0)fTimer=setTimeout(function(){face='happy';draw();},d);}
 function encourage(){var p=ENC[0|Math.random()*ENC.length];bubText=p;bubOn=true;setFace('wink',1800);draw();speak(p.replace('!',''));if(bTimer)clearTimeout(bTimer);bTimer=setTimeout(function(){bubOn=false;draw();},2400);}
@@ -472,7 +478,7 @@ function submit(){
   if(isN&&!alr){
     found.push(word);
     LAYOUT.forEach(function(L){if(L.word!==word)return;L.word.split('').forEach(function(l,i){var r=L.dir==='h'?L.row:L.row+i,c=L.dir==='h'?L.col+i:L.col;if(grid[r]&&grid[r][c])grid[r][c].revealed=true;});});
-    drawCW();pOk();queueSpeech(word);setFace('wink',1500);draw();
+    drawCW();pOk();queueSpeech(word);flushSpeech();setFace('wink',1500);draw();
     msg.textContent='✨ '+word+' – נמצא!';
     var ch=document.createElement('div');ch.className='fc';ch.textContent=word;document.getElementById('found').appendChild(ch);
     setTimeout(function(){if(msg.textContent.indexOf('נמצא')>=0)msg.textContent='';},1500);
