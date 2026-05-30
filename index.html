@@ -40,7 +40,7 @@ canvas{display:block;}
 <canvas id="mc"></canvas>
 <div id="intro-msg" style="font-size:13px;font-weight:800;color:#fff;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.3);padding:2px 0;">👆 מצא את שמות המשפחה!</div>
 <div id="timed-msg"></div>
-<div id="dbg" style="font-size:11px;color:#fff;background:rgba(0,0,0,0.35);padding:6px 10px;border-radius:8px;max-width:340px;min-height:20px;text-align:right;direction:ltr;line-height:1.6;"></div>
+
 <div id="msg"></div>
 <div id="pbar"></div>
 <div id="found"></div>
@@ -165,64 +165,45 @@ function startBg(){} // disabled — AC blocks speech on iOS
 // Music button hidden — no AC music on iOS
 document.getElementById('btn-music').style.display='none';
 
-// ── SPEECH SYSTEM — iOS Safari foolproof ───────────────
-// Rule: speak() must be called synchronously in touchstart/click
-// Strategy: store pending text, fire it at next touchstart
-
-var pendingTexts=[];
-var dbgLog=[];
-function DBG(t){
-  dbgLog.push(t);
-  if(dbgLog.length>12)dbgLog.shift();
-  var d=document.getElementById('dbg');
-  if(d)d.innerHTML=dbgLog.join('<br>');
-}
-var speakTimer=null;
-
-function getHebVoice(){
-  var vs=window.speechSynthesis.getVoices();
+// ── SPEECH ──────────────────────────────────────────────
+var heVoice = null;
+function loadVoice(){
+  var vs = window.speechSynthesis.getVoices();
   for(var i=0;i<vs.length;i++){
-    if(vs[i].lang&&vs[i].lang.toLowerCase().indexOf('he')>=0)return vs[i];
+    if(vs[i].lang && vs[i].lang.toLowerCase().startsWith('he')){
+      heVoice = vs[i]; return;
+    }
   }
-  return null;
 }
-
-function queueSpeech(t){pendingTexts.push(t);DBG('queued:'+t+' ('+pendingTexts.length+')');}
-
-// iOS proven fix: close AudioContext before speech, recreate after
-function killAC(){}
-
+function speak(text, onDone){
+  loadVoice();
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  if(heVoice) u.voice = heVoice;
+  u.lang = 'he-IL'; u.rate = 0.85; u.pitch = 1.1; u.volume = 1;
+  if(onDone) u.onend = function(){ setTimeout(onDone, 200); };
+  window.speechSynthesis.speak(u);
+}
+function speakSequence(texts, i){
+  if(!i) i = 0;
+  if(i >= texts.length) return;
+  speak(texts[i], function(){ speakSequence(texts, i+1); });
+}
+// Simple queue — spoken on next touchstart
+var pendingTexts = [];
+function queueSpeech(t){ pendingTexts.push(t); }
 function flushSpeech(){
-  DBG('queued:'+pendingTexts.length);
-  // Speech fires on next touchstart (iOS requires direct gesture)
+  if(!pendingTexts.length) return;
+  var t = pendingTexts.shift();
+  var remaining = pendingTexts.slice();
+  pendingTexts = [];
+  speak(t, function(){
+    if(remaining.length) speakSequence(remaining, 0);
+  });
 }
+function getHebVoice(){ loadVoice(); return heVoice; }
+function DBG(){}
 
-function doSpeakNext(){
-  if(!pendingTexts.length){DBG('done speaking');return;}
-  var text=pendingTexts.shift();
-  DBG('saying: '+text);
-  try{
-    var u=new SpeechSynthesisUtterance(text);
-    var v=getHebVoice();
-    DBG('v:'+(v?v.name:'?')+' t:'+text);
-    if(v)u.voice=v;
-    u.lang='he-IL';u.rate=0.85;u.pitch=1.1;u.volume=1;
-    u.onstart=function(){DBG('START:'+text);};
-    u.onend=function(){DBG('END:'+text);doSpeakNext();};
-    u.onerror=function(e){DBG('ERR:'+e.error);doSpeakNext();};
-    window.speechSynthesis.speak(u);
-    DBG('sp='+window.speechSynthesis.speaking+' pd='+window.speechSynthesis.pending);
-  }catch(e){DBG('EX:'+e.message);doSpeakNext();}
-}
-
-function drainSpeechQueue(){flushSpeech();}
-function speak(t){queueSpeech(t);flushSpeech();}
-function speakNow(t){queueSpeech(t);flushSpeech();}
-function speakSequence(texts,idx){
-  if(!idx)idx=0;
-  for(var i=idx;i<texts.length;i++)pendingTexts.push(texts[i]);
-  flushSpeech();
-}
 if(window.speechSynthesis){
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged=function(){window.speechSynthesis.getVoices();};
@@ -425,26 +406,12 @@ function findNode(cx,cy){
   return best;
 }
 function onS(cx,cy){
-  // iOS: speak() MUST be called from touchstart directly
-  // Speak any pending texts here (touchstart = guaranteed gesture)
-  if(pendingTexts.length){
-    var text=pendingTexts.shift();
-    try{
-      var u=new SpeechSynthesisUtterance(text);
-      var v=getHebVoice();if(v)u.voice=v;
-      u.lang='he-IL';u.rate=0.85;u.pitch=1.1;u.volume=1;
-      u.onend=function(){
-        if(pendingTexts.length){
-          // Chain remaining — onend context works too
-          var t2=pendingTexts.shift();
-          var u2=new SpeechSynthesisUtterance(t2);
-          var v2=getHebVoice();if(v2)u2.voice=v2;
-          u2.lang='he-IL';u2.rate=0.85;u2.pitch=1.1;u2.volume=1;
-          u2.onend=arguments.callee; // recurse
-          window.speechSynthesis.speak(u2);
-        }
-      };
-      window.speechSynthesis.speak(u);
+  flushSpeech(); // speak pending from touchstart
+  var n=findNode(cx,cy);
+  if(n===-1){encourage();return;}
+  if(n>=0){drag=true;sel=[n];draw();renderWD();}
+}
+ window.speechSynthesis.speak(u);
       DBG('onS speak:'+text+' sp='+window.speechSynthesis.speaking);
     }catch(e){DBG('onS err:'+e);}
   }
@@ -454,11 +421,8 @@ function onE(){
   if(!drag&&sel.length===0)return;
   drag=false;
   submit();
-  flushSpeech();
-  startBg(); // ensure music starts even on first successful touch
 }
-
-MC.addEventListener('touchstart',function(e){e.preventDefault();e.stopPropagation();if(e.touches.length)onS(e.touches[0].clientX,e.touches[0].clientY);},{passive:false,capture:true});
+ction(e){e.preventDefault();e.stopPropagation();if(e.touches.length)onS(e.touches[0].clientX,e.touches[0].clientY);},{passive:false,capture:true});
 MC.addEventListener('touchmove',function(e){e.preventDefault();e.stopPropagation();if(e.touches.length)onM(e.touches[0].clientX,e.touches[0].clientY);},{passive:false,capture:true});
 MC.addEventListener('touchend',function(e){e.preventDefault();e.stopPropagation();onE();},{passive:false,capture:true});
 MC.addEventListener('touchcancel',function(e){e.preventDefault();drag=false;sel=[];draw();renderWD();},{passive:false,capture:true});
@@ -478,7 +442,7 @@ function submit(){
   if(isN&&!alr){
     found.push(word);
     LAYOUT.forEach(function(L){if(L.word!==word)return;L.word.split('').forEach(function(l,i){var r=L.dir==='h'?L.row:L.row+i,c=L.dir==='h'?L.col+i:L.col;if(grid[r]&&grid[r][c])grid[r][c].revealed=true;});});
-    drawCW();pOk();queueSpeech(word);flushSpeech();setFace('wink',1500);draw();
+    drawCW();pOk();queueSpeech(word);setFace('wink',1500);draw();
     msg.textContent='✨ '+word+' – נמצא!';
     var ch=document.createElement('div');ch.className='fc';ch.textContent=word;document.getElementById('found').appendChild(ch);
     setTimeout(function(){if(msg.textContent.indexOf('נמצא')>=0)msg.textContent='';},1500);
@@ -487,12 +451,8 @@ function submit(){
       setTimeout(function(){
         petals=TP;setFace('wink');draw();pWin();
         msg.textContent='🌸 כל המשפחה נמצאה! 🌸';
-        // Victory — queue all names, start speaking immediately
-        pendingTexts=[];
-        pendingTexts.push('כל הכבוד! עשית עבודה נהדרת');
-        for(var ni=0;ni<NAMES.length;ni++)pendingTexts.push(NAMES[ni]);
-        pendingTexts.push('כמה אנחנו ביחד. משפחה גדולה ומיוחדת! המשך יום מהנה');
-        flushSpeech();
+        // Victory speech — spoken on next touch
+        pendingTexts = ['כל הכבוד! עשית עבודה נהדרת'].concat(NAMES).concat(['כמה אנחנו ביחד. משפחה גדולה ומיוחדת! המשך יום מהנה']);
       },400);
     }
   } else if(sel.length>=2){
@@ -507,14 +467,8 @@ function submit(){
   sel=[];draw();renderWD();
 }
 
-document.getElementById('bdel').addEventListener('click',function(){
-  if(pendingTexts.length){var t=pendingTexts.shift();var u=new SpeechSynthesisUtterance(t);var v=getHebVoice();if(v)u.voice=v;u.lang='he-IL';u.volume=1;window.speechSynthesis.speak(u);}
-  sel=[];draw();renderWD();document.getElementById('msg').textContent='';
-});
-document.getElementById('bsh').addEventListener('click',function(){
-  if(pendingTexts.length){var t=pendingTexts.shift();var u=new SpeechSynthesisUtterance(t);var v=getHebVoice();if(v)u.voice=v;u.lang='he-IL';u.volume=1;window.speechSynthesis.speak(u);}
-  shuf(tokens);sel=[];draw();renderWD();
-});
+document.getElementById('bdel').addEventListener('click',function(){flushSpeech();sel=[];draw();renderWD();document.getElementById('msg').textContent='';});
+document.getElementById('bsh').addEventListener('click',function(){flushSpeech();shuf(tokens);sel=[];draw();renderWD();});
 
 // ── ZOOM CROSSWORD ────────────────────────────────────
 function showZoomCW(){
