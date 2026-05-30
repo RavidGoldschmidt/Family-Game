@@ -6,8 +6,13 @@
 <title>משחק המשפחה</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
-html,body{height:100%;}
-body{font-family:Helvetica,Arial,sans-serif;direction:rtl;background:linear-gradient(180deg,#b8e4f7 0%,#7ec8e3 40%,#55b3d0 55%,#72c472 55%,#4a9e4a 100%);display:flex;flex-direction:column;align-items:center;padding:6px 4px 8px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+html{height:100%;overflow:hidden;}
+body{font-family:Helvetica,Arial,sans-serif;direction:rtl;
+  background:linear-gradient(180deg,#b8e4f7 0%,#7ec8e3 40%,#55b3d0 55%,#72c472 55%,#4a9e4a 100%) fixed;
+  display:flex;flex-direction:column;align-items:center;
+  padding:6px 4px 8px;
+  height:100%;overflow:hidden;
+  overscroll-behavior:none;}
 h1{color:#fff;font-size:18px;font-weight:800;margin-bottom:4px;text-shadow:0 2px 6px rgba(0,0,0,0.3);}
 #cw-wrap{background:rgba(255,255,255,0.18);border-radius:10px;padding:4px;margin-bottom:3px;border:1px solid rgba(255,255,255,0.4);display:inline-flex;justify-content:center;cursor:pointer;}
 #cw-wrap:active{background:rgba(255,255,255,0.30);}
@@ -42,6 +47,7 @@ h1{color:#fff;font-size:18px;font-weight:800;margin-bottom:4px;text-shadow:0 2px
   <button class="btn" id="bdel">✕ מחק</button>
   <button class="btn" id="bsh">⟳ ערבב</button>
   <button class="btn" id="bzoom">🔍 הגדל</button>
+  <button class="btn" id="bspeak">🔊 קרא</button>
 </div>
 <div id="zoom-overlay">
   <div style="color:#fff;font-size:14px;font-weight:800;margin-bottom:8px;">📋 הצלב-מילים — לחץ לסגירה</div>
@@ -49,6 +55,13 @@ h1{color:#fff;font-size:18px;font-weight:800;margin-bottom:4px;text-shadow:0 2px
 </div>
 
 <script>
+// Prevent ALL page scrolling on iOS
+document.addEventListener('touchmove', function(e){ e.preventDefault(); }, {passive: false});
+document.addEventListener('touchstart', function(e){
+  // Allow default only for buttons and inputs
+  if(e.target.tagName==='BUTTON'||e.target.tagName==='INPUT')return;
+}, {passive: false});
+
 // ── DATA ──────────────────────────────────────────────
 var NAMES=['אורי','רוחמה','אדוה','עופר','דלית','בארי','אפרת','מיקה','אבי','עדי','סוניה','יונה','ניר','רביד','להב','עלמה','איה','נגה'];
 var LAYOUT=[
@@ -510,6 +523,25 @@ document.getElementById('bzoom').addEventListener('click',function(){flushSpeech
 document.getElementById('cw-wrap').addEventListener('click',function(){flushSpeech();showZoom();});
 document.getElementById('bdel').addEventListener('click',function(){flushSpeech();sel=[];draw();renderWD();document.getElementById('msg').textContent='';});
 document.getElementById('bsh').addEventListener('click',function(){flushSpeech();shuf(tokens);sel=[];draw();renderWD();});
+
+// 🔊 Speak button — direct click = guaranteed iOS gesture
+document.getElementById('bspeak').addEventListener('click',function(){
+  loadVoice();
+  if(pendingTexts.length>0){
+    // Speak queued texts
+    var list=pendingTexts.slice();
+    pendingTexts=[];
+    speakList(list,0);
+  } else if(found.length>0){
+    // Re-read last found name
+    doSpeak(found[found.length-1],null);
+  }
+});
+
+// Prevent page scroll when touching game canvas
+document.addEventListener('touchmove', function(e){
+  if(e.target===MC||e.target===CWel)e.preventDefault();
+},{passive:false});
 
 // ── INIT ─────────────────────────────────────────────────
 drawCW();draw();updatePBar();
