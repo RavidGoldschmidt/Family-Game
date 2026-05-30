@@ -1,106 +1,556 @@
 <!DOCTYPE html>
-<html lang="he">
+<html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speech Test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>משחק המשפחה</title>
 <style>
-body{font-family:sans-serif;padding:20px;background:#e8f4fd;}
-button{padding:20px 30px;font-size:18px;margin:10px;border-radius:12px;border:none;background:#1565c0;color:#fff;cursor:pointer;display:block;width:100%;}
-#log{margin-top:20px;padding:10px;background:#fff;border-radius:8px;font-size:13px;white-space:pre-wrap;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:Helvetica,Arial,sans-serif;direction:rtl;
+  background:linear-gradient(180deg,#b8e4f7 0%,#7ec8e3 38%,#55b3d0 55%,#72c472 55%,#4a9e4a 100%);
+  display:flex;flex-direction:column;align-items:center;
+  height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:6px 4px 8px;
+}
+h1{color:#fff;font-size:18px;font-weight:800;margin-bottom:4px;text-shadow:0 2px 6px rgba(0,0,0,0.3);flex-shrink:0;}
+#cw-wrap{background:rgba(255,255,255,0.18);border-radius:10px;padding:4px;margin-bottom:3px;border:1px solid rgba(255,255,255,0.4);flex-shrink:0;display:inline-flex;justify-content:center;align-items:center;overflow:visible;cursor:pointer;-webkit-tap-highlight-color:rgba(255,255,255,0.2);}
+#cw-wrap:active{background:rgba(255,255,255,0.30);}
+canvas{display:block;}
+#wd{height:28px;display:flex;flex-direction:row-reverse;gap:4px;justify-content:center;align-items:flex-end;margin:1px 0;flex-shrink:0;}
+.wl{min-width:16px;height:26px;border-bottom:2.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;padding:0 2px;}
+#mc{touch-action:none;cursor:pointer;display:block;flex-shrink:0;}
+#timed-msg{font-size:13px;font-weight:800;color:#fff;min-height:16px;text-align:center;padding:2px 8px;border-radius:10px;transition:all 0.3s;flex-shrink:0;}
+#timed-msg.show{background:rgba(0,0,0,0.22);}
+#msg{font-size:13px;font-weight:800;color:#fff;min-height:16px;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.3);flex-shrink:0;}
+#pbar{display:flex;gap:1px;justify-content:center;flex-wrap:wrap;max-width:320px;flex-shrink:0;}
+#found{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:340px;flex-shrink:0;}
+.fc{font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;background:rgba(255,255,255,0.28);color:#fff;border:1px solid rgba(255,255,255,0.6);}
+.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;flex-shrink:0;margin-top:3px;}
+.btn{padding:6px 13px;border-radius:20px;border:2px solid rgba(255,255,255,0.75);background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:Helvetica,Arial,sans-serif;}
+.btn:active{background:rgba(255,255,255,0.4);}
+#btn-music.muted{background:rgba(255,80,80,0.35);border-color:rgba(255,150,150,0.8);}
 </style>
 </head>
 <body>
-<h2>בדיקת קול - iOS</h2>
-<button onclick="test1()">בדיקה 1: דיבור פשוט</button>
-<button onclick="test2()">בדיקה 2: רצף שמות</button>
-<button onclick="test3()">בדיקה 3: AudioContext + דיבור</button>
-<div id="log">לחץ כפתור לבדיקה...</div>
-<script>
-var log=document.getElementById('log');
-function L(t){log.textContent+='\n'+t;}
+<h1>🌸 משחק המשפחה</h1>
+<div id="cw-wrap"><canvas id="cw"></canvas></div>
+<div id="wd"></div>
+<canvas id="mc"></canvas>
+<div id="intro-msg" style="font-size:13px;font-weight:800;color:#fff;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.3);padding:2px 0;">👆 מצא את שמות המשפחה!</div>
+<div id="timed-msg"></div>
+<div id="msg"></div>
+<div id="pbar"></div>
+<div id="found"></div>
+<div class="btns">
+  <button class="btn" id="bdel">✕ מחק</button>
+  <button class="btn" id="bsh">⟳ ערבב</button>
+  <button class="btn" id="btn-zoom">🔍 הגדל</button>
+  <button class="btn" id="btn-music">🎵 מוזיקה</button>
+</div>
 
-function getVoice(){
-  var vs=window.speechSynthesis.getVoices();
-  L('Voices: '+vs.length);
-  for(var i=0;i<vs.length;i++){
-    if(vs[i].lang&&vs[i].lang.toLowerCase().indexOf('he')>=0){
-      L('Hebrew voice: '+vs[i].name);
-      return vs[i];
+<!-- Zoom overlay -->
+<div id="zoom-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,50,0.88);z-index:200;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="color:#fff;font-size:14px;font-weight:800;margin-bottom:8px;text-shadow:0 1px 4px rgba(0,0,0,0.5);">📋 הצלב-מילים</div>
+  <canvas id="cw-zoom" style="border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);"></canvas>
+</div>
+</body>
+
+<script>
+window.addEventListener('load',function(){
+
+var NAMES=['אורי','רוחמה','אדוה','עופר','דלית','בארי','אפרת','מיקה','אבי','עדי','סוניה','יונה','ניר','רביד','להב','עלמה','איה','נגה'];
+var LAYOUT=[
+  {word:'רוחמה',row:13,col:3,dir:'h'},{word:'אורי',row:12,col:4,dir:'v'},
+  {word:'אדוה',row:10,col:7,dir:'v'},{word:'דלית',row:15,col:2,dir:'h'},
+  {word:'בארי',row:10,col:6,dir:'h'},{word:'מיקה',row:9,col:9,dir:'v'},
+  {word:'עדי',row:14,col:2,dir:'v'},{word:'להב',row:8,col:6,dir:'v'},
+  {word:'עלמה',row:8,col:5,dir:'h'},{word:'איה',row:6,col:8,dir:'v'},
+  {word:'אפרת',row:6,col:8,dir:'h'},{word:'אבי',row:16,col:0,dir:'h'},
+  {word:'ניר',row:4,col:10,dir:'v'},{word:'נגה',row:4,col:10,dir:'h'},
+  {word:'סוניה',row:0,col:12,dir:'v'},{word:'יונה',row:3,col:12,dir:'h'},
+  {word:'עופר',row:1,col:11,dir:'h'},{word:'רביד',row:14,col:4,dir:'h'}
+];
+var GR=17,GC=16,TP=16;
+
+function buildGrid(){
+  var g=[];
+  for(var r=0;r<GR;r++){g.push([]);for(var c=0;c<GC;c++)g[r].push(null);}
+  LAYOUT.forEach(function(L){L.word.split('').forEach(function(l,i){
+    var r=L.dir==='h'?L.row:L.row+i,c=L.dir==='h'?L.col+i:L.col;
+    if(r<GR&&c<GC){if(!g[r][c])g[r][c]={letter:l,revealed:false};g[r][c].w=L.word;}
+  });});
+  return g;
+}
+var grid=buildGrid();
+
+// ── CROSSWORD: wide, short ─────────────────────────────
+var VW=Math.min(window.innerWidth,375);
+// CWS: fit 17 rows & 16 cols. Use 14px cells = 224w x 238h
+var CWS=14;
+var CWel=document.getElementById('cw'),CTX=CWel.getContext('2d');
+var CWDPR=Math.min(window.devicePixelRatio||1,3);
+var CWW=(GC*CWS)+4, CWH=(GR*CWS)+4;
+CWel.width=Math.round(CWW*CWDPR); CWel.height=Math.round(CWH*CWDPR);
+CWel.style.width=CWW+'px'; CWel.style.height=CWH+'px';
+// drawCW uses setTransform(CWDPR) — no initial scale needed
+
+function drawCW(){
+  // Use setTransform (absolute) to avoid cumulative scale bug
+  CTX.setTransform(CWDPR,0,0,CWDPR,0,0);
+  CTX.clearRect(0,0,CWel.width,CWel.height);
+  for(var r=0;r<GR;r++) for(var c=0;c<GC;c++){
+    var cell=grid[r][c];if(!cell)continue;
+    var dc=GC-1-c,x=2+dc*CWS,y=2+r*CWS,s=CWS-2; // -2 for visible gap
+    if(cell.revealed){
+      CTX.fillStyle='rgba(255,255,255,0.95)';CTX.strokeStyle='#64b5f6';CTX.lineWidth=0.6;
+      CTX.beginPath();CTX.roundRect(x,y,s,s,1.5);CTX.fill();CTX.stroke();
+      CTX.fillStyle='#1a3a6b';CTX.font='700 '+Math.max(7,Math.floor(CWS*0.65))+'px Helvetica,sans-serif';
+      CTX.textAlign='center';CTX.textBaseline='middle';CTX.fillText(cell.letter,x+s/2,y+s/2+0.5);
+    } else {
+      CTX.fillStyle='rgba(255,255,255,0.45)';CTX.strokeStyle='rgba(150,200,255,0.85)';CTX.lineWidth=1.0;
+      CTX.beginPath();CTX.roundRect(x,y,s,s,1.5);CTX.fill();CTX.stroke();
     }
   }
-  L('No Hebrew voice, using default');
+}
+
+// ── MAIN CANVAS: square, compact ──────────────────────
+// Layout: petals BETWEEN center and letter ring (like a real flower)
+// Center → petals → letters (outside)
+// Sizes chosen so everything fits in SZ x SZ
+
+var SZ=Math.min(VW-4,320);
+var MC=document.getElementById('mc'),MX=MC.getContext('2d');
+// Retina: render at 2x for crisp text, display at SZ
+var DPR=Math.min(window.devicePixelRatio||1,3);
+MC.width=Math.round(SZ*DPR);
+MC.height=Math.round(SZ*DPR);
+MC.style.width=SZ+'px';
+MC.style.height=SZ+'px';
+// draw() uses setTransform(DPR) — no initial scale needed
+
+var CX=SZ/2, CY=SZ/2;
+var FR=SZ*0.105;
+var PR1=SZ*0.19;
+var PR2=SZ*0.30;
+var PH1=SZ*0.068;
+var PH2=SZ*0.078;
+var LR=SZ*0.432;
+var NR=SZ*0.070;  // BIGGER nodes (was 0.062)
+
+function pa(i){return(2*Math.PI*i/TP)-Math.PI/2;}
+var seen={},allL=[];
+NAMES.forEach(function(n){n.split('').forEach(function(l){if(!seen[l]){seen[l]=true;allL.push(l);}});});
+allL.sort();
+var tokens=allL.slice();
+function shuf(a){for(var i=a.length-1;i>0;i--){var j=0|Math.random()*(i+1);var t=a[i];a[i]=a[j];a[j]=t;}}
+shuf(tokens);
+function np(i){var a=(2*Math.PI*i/tokens.length)-Math.PI/2;return{x:CX+LR*Math.cos(a),y:CY+LR*Math.sin(a)};}
+
+var petals=TP,found=[],over=false,sel=[],drag=false,fp=[],anId=null;
+var face='happy',fTimer=null,bubOn=false,bubText='',bTimer=null;
+var ENC=['!כל הכבוד','!יופי','!מעולה','!אלוף','!נפלא','!תותח','!מדהים','!בהצלחה'];
+var AC=null,bgOn=false,musicMuted=false;
+
+function unlockAC(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}if(AC.state==='suspended'){try{AC.resume();}catch(e){}}}
+function sfx(f,d,tp,v,dl){if(!AC)return;try{var o=AC.createOscillator(),g=AC.createGain();o.connect(g);g.connect(AC.destination);o.type=tp||'sine';o.frequency.value=f;var t=AC.currentTime+(dl||0);g.gain.setValueAtTime(v||0.18,t);g.gain.exponentialRampToValueAtTime(0.001,t+d);o.start(t);o.stop(t+d+0.01);}catch(e){}}
+function tone(f,d,tp,v,dl){if(!AC||musicMuted)return;sfx(f,d,tp,v,dl);}
+function pClick(){sfx(900,0.04,'sine',0.08);}
+function pOk(){[523,659,784,1047].forEach(function(f,i){sfx(f,0.18,'sine',0.2,i*0.09);});}
+function pBad(){sfx(230,0.18,'sawtooth',0.12);}
+function pWin(){[523,659,784,1047,880,1047,784,1047].forEach(function(f,i){sfx(f,0.18,'square',0.15,i*0.11);});}
+function startBg(){
+  if(bgOn||musicMuted)return;
+  // Create AudioContext if needed
+  if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}
+  // Resume if suspended (iOS requires this after user gesture)
+  function doStart(){
+    if(bgOn)return;
+    bgOn=true;
+    var bass=[293,220,246,184,196,293,196,220];
+    var ch=[[293,370,440],[220,277,330],[246,293,370],[184,247,311],[196,246,294],[293,370,440],[196,246,294],[220,277,330]];
+    var i=0;
+    function tick(){if(!bgOn)return;tone(bass[i%8],1.8,'sine',0.05);ch[i%8].forEach(function(f){tone(f,1.7,'sine',0.03);});i++;setTimeout(tick,2100);}
+    tick();
+  }
+  if(AC.state==='suspended'){
+    AC.resume().then(doStart).catch(doStart);
+  } else {
+    doStart();
+  }
+}
+document.getElementById('btn-music').addEventListener('click',function(){
+  drainSpeechQueue();
+  unlockAC();musicMuted=!musicMuted;
+  var btn=document.getElementById('btn-music');
+  if(musicMuted){bgOn=false;btn.textContent='🔇 מוזיקה';btn.classList.add('muted');}
+  else{btn.textContent='🎵 מוזיקה';btn.classList.remove('muted');startBg();}
+});
+
+// ── SPEECH SYSTEM — iOS Safari foolproof ───────────────
+// Rule: speak() must be called synchronously in touchstart/click
+// Strategy: store pending text, fire it at next touchstart
+
+var pendingTexts=[];   // queue of texts to speak
+var speakTimer=null;
+
+function getHebVoice(){
+  var vs=window.speechSynthesis.getVoices();
+  for(var i=0;i<vs.length;i++){
+    if(vs[i].lang&&vs[i].lang.toLowerCase().indexOf('he')>=0)return vs[i];
+  }
   return null;
 }
 
-function test1(){
-  log.textContent='Test 1: simple speak';
-  window.speechSynthesis.cancel();
-  var u=new SpeechSynthesisUtterance('שלום משפחה');
-  var v=getVoice();if(v)u.voice=v;
-  u.lang='he-IL';u.rate=0.9;u.volume=1;
-  u.onstart=function(){L('onstart fired');}
-  u.onend=function(){L('onend fired');}
-  u.onerror=function(e){L('onerror: '+e.error);}
-  window.speechSynthesis.speak(u);
-  L('speak() called, speaking='+window.speechSynthesis.speaking);
-}
+function queueSpeech(t){pendingTexts.push(t);}
 
-function test2(){
-  log.textContent='Test 2: sequence';
-  var names=['אורי','רוחמה','אדוה','נגה'];
-  var i=0;
-  function next(){
-    if(i>=names.length){L('done!');return;}
-    window.speechSynthesis.cancel();
-    var u=new SpeechSynthesisUtterance(names[i]);
-    var v=getVoice();if(v)u.voice=v;
-    u.lang='he-IL';u.rate=0.9;
-    u.onend=function(){L('said: '+names[i]);i++;setTimeout(next,300);};
-    u.onerror=function(e){L('error at '+names[i]+': '+e.error);i++;setTimeout(next,300);};
-    window.speechSynthesis.speak(u);
-    L('speaking: '+names[i]);
-    i++;
+// Called synchronously inside touchstart/click — guaranteed on iOS
+function flushSpeech(){
+  if(!pendingTexts.length)return;
+  // Suspend AudioContext so speechSynthesis gets exclusive audio session
+  if(AC&&AC.state==='running'){
+    AC.suspend().then(function(){doSpeak();});
+  } else {
+    doSpeak();
   }
-  // DON'T increment i here - next() handles it
-  i=0;
-  window.speechSynthesis.cancel();
-  var u=new SpeechSynthesisUtterance(names[i]);
-  var v=getVoice();if(v)u.voice=v;
-  u.lang='he-IL';u.rate=0.9;
-  u.onend=function(){L('said: '+names[i-1]);setTimeout(next,300);};
-  u.onerror=function(e){L('error: '+e.error);setTimeout(next,300);};
-  window.speechSynthesis.speak(u);
-  L('speaking: '+names[i]);
-  i++;
 }
 
-function test3(){
-  log.textContent='Test 3: AudioContext + speech';
-  var AC=new(window.AudioContext||window.webkitAudioContext)();
-  L('AC state: '+AC.state);
-  AC.resume().then(function(){
-    L('AC resumed, state: '+AC.state);
-    // Play a beep
-    var o=AC.createOscillator(),g=AC.createGain();
-    o.connect(g);g.connect(AC.destination);
-    o.frequency.value=440;g.gain.value=0.3;
-    o.start();o.stop(AC.currentTime+0.3);
-    L('beep played');
-    // Then speak
-    setTimeout(function(){
-      var u=new SpeechSynthesisUtterance('כל הכבוד');
-      var v=getVoice();if(v)u.voice=v;
-      u.lang='he-IL';
-      u.onstart=function(){L('speech started');}
-      u.onend=function(){L('speech ended');}
-      window.speechSynthesis.speak(u);
-      L('speak called');
-    },400);
+function doSpeak(){
+  if(!pendingTexts.length){
+    // Resume music when done speaking
+    if(AC&&AC.state==='suspended'&&bgOn&&!musicMuted)AC.resume();
+    return;
+  }
+  var text=pendingTexts.shift();
+  try{
+    window.speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(text);
+    var v=getHebVoice();if(v)u.voice=v;
+    u.lang='he-IL';u.rate=0.85;u.pitch=1.1;u.volume=1;
+    u.onend=function(){setTimeout(doSpeak,200);};
+    u.onerror=function(){setTimeout(doSpeak,200);};
+    window.speechSynthesis.speak(u);
+  }catch(e){setTimeout(doSpeak,200);}
+}
+
+function drainSpeechQueue(){flushSpeech();}
+function speak(t){queueSpeech(t);flushSpeech();}
+function speakNow(t){queueSpeech(t);flushSpeech();}
+function speakSequence(texts,idx){
+  if(!idx)idx=0;
+  for(var i=idx;i<texts.length;i++)pendingTexts.push(texts[i]);
+  flushSpeech();
+}
+if(window.speechSynthesis){
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged=function(){window.speechSynthesis.getVoices();};
+  // iOS Safari keepalive: prevents speech from pausing mid-sequence
+  setInterval(function(){
+    if(window.speechSynthesis.speaking&&window.speechSynthesis.paused){
+      window.speechSynthesis.resume();
+    }
+  },5000);
+}
+function setFace(s,d){face=s;if(fTimer)clearTimeout(fTimer);fTimer=null;if(d>0)fTimer=setTimeout(function(){face='happy';draw();},d);}
+function encourage(){var p=ENC[0|Math.random()*ENC.length];bubText=p;bubOn=true;setFace('wink',1800);draw();speak(p.replace('!',''));if(bTimer)clearTimeout(bTimer);bTimer=setTimeout(function(){bubOn=false;draw();},2400);}
+
+function showTimedMsg(text,speechText){
+  var el=document.getElementById('timed-msg');
+  el.textContent=text;el.classList.add('show');
+  var s=speechText||text.replace(/[🤔👏🤩😤]/g,'').trim();
+  queueSpeech(s);
+  // Show text — speech will play on next touch
+  setTimeout(function(){el.classList.remove('show');el.textContent='';},5000);
+}
+setTimeout(function(){showTimedMsg('אילו עוד בני משפחה אתה מכיר? 🤔','אילו עוד בני משפחה אתה מכיר?');},60000);
+setTimeout(function(){showTimedMsg('יופי! אתה ממש מוצלח 👏','יופי! אתה ממש מוצלח');},120000);
+setTimeout(function(){showTimedMsg('פששששש... אין עלייך! 🤩','פששש אין עלייך');},180000);
+setTimeout(function(){showTimedMsg('אין לי את כל היום, תסיים כבר! 😤','אין לי את כל היום תסיים כבר');},240000);
+
+// ── DRAW ──────────────────────────────────────────────
+function draw(){
+  MX.setTransform(DPR,0,0,DPR,0,0);
+  MX.clearRect(0,0,SZ,SZ);
+  drawStem();drawPetals();drawCenter();drawFPs();drawRing();drawLines();
+  if(bubOn)drawBubble();
+}
+
+function drawStem(){
+  MX.save();MX.strokeStyle='#43a047';MX.lineWidth=Math.max(3,SZ*0.014);MX.lineCap='round';
+  MX.beginPath();MX.moveTo(CX,CY+FR+1);MX.bezierCurveTo(CX+SZ*.03,CY+SZ*.14,CX-SZ*.01,CY+SZ*.26,CX,CY+SZ*.44);MX.stroke();
+  MX.fillStyle='#66bb6a';MX.strokeStyle='#388e3c';MX.lineWidth=0.7;
+  MX.beginPath();MX.moveTo(CX+SZ*.02,CY+SZ*.1);MX.bezierCurveTo(CX+SZ*.1,CY+SZ*.06,CX+SZ*.09,CY+SZ*.18,CX+SZ*.025,CY+SZ*.17);MX.closePath();MX.fill();MX.stroke();
+  MX.beginPath();MX.moveTo(CX-SZ*.01,CY+SZ*.2);MX.bezierCurveTo(CX-SZ*.1,CY+SZ*.16,CX-SZ*.09,CY+SZ*.28,CX-SZ*.025,CY+SZ*.27);MX.closePath();MX.fill();MX.stroke();
+  MX.restore();
+}
+
+function drawOnePetal(px,py,ang,PH,present){
+  MX.save();MX.translate(px,py);MX.rotate(ang+Math.PI/2);
+  if(present){
+    var gd=MX.createRadialGradient(0,-PH*.25,1,0,-PH*.45,PH);
+    gd.addColorStop(0,'#ffe0ec');gd.addColorStop(0.35,'#f48fb1');gd.addColorStop(0.75,'#e91e8c');gd.addColorStop(1,'#c2185b');
+    MX.fillStyle=gd;MX.strokeStyle='rgba(194,24,91,0.18)';MX.lineWidth=0.6;
+  } else {
+    MX.fillStyle='rgba(255,255,255,0.04)';MX.strokeStyle='rgba(255,255,255,0.14)';MX.lineWidth=0.6;MX.setLineDash([2,2]);
+  }
+  MX.beginPath();MX.moveTo(0,0);
+  MX.bezierCurveTo(-PH*.26,-PH*.32,-PH*.28,-PH*.76,0,-PH);
+  MX.bezierCurveTo(PH*.28,-PH*.76,PH*.26,-PH*.32,0,0);
+  MX.closePath();MX.fill();MX.stroke();MX.setLineDash([]);MX.restore();
+}
+function drawPetals(){
+  // Two rings of 8 petals each, offset by half a slot
+  var n1=8,n2=8;
+  for(var i=0;i<n1;i++){
+    var ang=(2*Math.PI*i/n1)-Math.PI/2;
+    var present=i<Math.ceil(petals/2); // inner ring loses petals first... split evenly
+    drawOnePetal(CX+PR1*Math.cos(ang),CY+PR1*Math.sin(ang),ang,PH1,i<petals);
+  }
+  for(var i=0;i<n2;i++){
+    var ang=(2*Math.PI*i/n2)-Math.PI/2+Math.PI/n2; // offset by half
+    drawOnePetal(CX+PR2*Math.cos(ang),CY+PR2*Math.sin(ang),ang,PH2,i+n1<petals);
+  }
+}
+
+function drawCenter(){
+  var alive=petals>0;
+  MX.save();
+  var gd=MX.createRadialGradient(CX-FR*.2,CY-FR*.2,FR*.08,CX,CY,FR);
+  gd.addColorStop(0,alive?'#fffde7':'#f5f5f5');gd.addColorStop(0.5,alive?'#FFD740':'#e0e0e0');gd.addColorStop(1,alive?'#FFB300':'#bdbdbd');
+  MX.fillStyle=gd;MX.strokeStyle=alive?'rgba(210,80,0,0.4)':'rgba(150,150,150,0.3)';MX.lineWidth=1.4;
+  MX.beginPath();MX.arc(CX,CY,FR,0,Math.PI*2);MX.fill();MX.stroke();
+  MX.restore();drawFace(alive);
+}
+
+function drawFace(alive){
+  MX.save();MX.lineCap='round';var f=face;
+  if(!alive||f==='crying'){
+    MX.strokeStyle='rgba(80,80,80,0.65)';MX.lineWidth=1.6;
+    MX.beginPath();MX.moveTo(CX-FR*.5,CY-FR*.5);MX.quadraticCurveTo(CX-FR*.24,CY-FR*.65,CX-FR*.08,CY-FR*.48);MX.stroke();
+    MX.beginPath();MX.moveTo(CX+FR*.08,CY-FR*.48);MX.quadraticCurveTo(CX+FR*.24,CY-FR*.65,CX+FR*.5,CY-FR*.5);MX.stroke();
+    MX.lineWidth=2;
+    MX.beginPath();MX.moveTo(CX-FR*.44,CY-FR*.22);MX.quadraticCurveTo(CX-FR*.26,CY-FR*.38,CX-FR*.1,CY-FR*.22);MX.stroke();
+    MX.beginPath();MX.moveTo(CX+FR*.1,CY-FR*.22);MX.quadraticCurveTo(CX+FR*.26,CY-FR*.38,CX+FR*.44,CY-FR*.22);MX.stroke();
+    MX.lineWidth=2.2;MX.beginPath();MX.moveTo(CX-FR*.36,CY+FR*.44);MX.quadraticCurveTo(CX,CY+FR*.20,CX+FR*.36,CY+FR*.44);MX.stroke();
+    MX.strokeStyle='rgba(100,170,240,0.82)';MX.lineWidth=1.8;
+    [[-FR*.28,-FR*.1],[FR*.28,-FR*.1],[0,-FR*.06]].forEach(function(p){MX.beginPath();MX.moveTo(CX+p[0],CY+p[1]);MX.quadraticCurveTo(CX+p[0]-FR*.04,CY+p[1]+FR*.16,CX+p[0],CY+p[1]+FR*.26);MX.stroke();MX.fillStyle='rgba(100,170,240,0.6)';MX.beginPath();MX.ellipse(CX+p[0],CY+p[1]+FR*.30,FR*.05,FR*.08,0,0,Math.PI*2);MX.fill();});
+  } else if(f==='sad_tear'){
+    MX.strokeStyle='rgba(80,80,80,0.6)';MX.lineWidth=1.5;
+    MX.beginPath();MX.moveTo(CX-FR*.45,CY-FR*.5);MX.quadraticCurveTo(CX-FR*.24,CY-FR*.62,CX-FR*.08,CY-FR*.48);MX.stroke();
+    MX.beginPath();MX.moveTo(CX+FR*.08,CY-FR*.48);MX.quadraticCurveTo(CX+FR*.24,CY-FR*.62,CX+FR*.45,CY-FR*.5);MX.stroke();
+    MX.lineWidth=2;
+    MX.beginPath();MX.moveTo(CX-FR*.44,CY-FR*.22);MX.quadraticCurveTo(CX-FR*.26,CY-FR*.38,CX-FR*.1,CY-FR*.22);MX.stroke();
+    MX.beginPath();MX.moveTo(CX+FR*.1,CY-FR*.22);MX.quadraticCurveTo(CX+FR*.26,CY-FR*.38,CX+FR*.44,CY-FR*.22);MX.stroke();
+    MX.lineWidth=2.2;MX.beginPath();MX.moveTo(CX-FR*.34,CY+FR*.44);MX.quadraticCurveTo(CX,CY+FR*.20,CX+FR*.34,CY+FR*.44);MX.stroke();
+    MX.strokeStyle='rgba(100,170,240,0.8)';MX.lineWidth=1.8;
+    MX.beginPath();MX.moveTo(CX-FR*.30,CY-FR*.1);MX.quadraticCurveTo(CX-FR*.36,CY+FR*.08,CX-FR*.30,CY+FR*.20);MX.stroke();
+    MX.fillStyle='rgba(100,170,240,0.6)';MX.beginPath();MX.ellipse(CX-FR*.30,CY+FR*.24,FR*.05,FR*.08,0,0,Math.PI*2);MX.fill();
+  } else if(f==='wink'){
+    MX.strokeStyle='rgba(80,40,0,0.48)';MX.lineWidth=1.5;
+    MX.beginPath();MX.moveTo(CX-FR*.45,CY-FR*.52);MX.quadraticCurveTo(CX-FR*.24,CY-FR*.64,CX-FR*.08,CY-FR*.5);MX.stroke();
+    MX.beginPath();MX.moveTo(CX+FR*.08,CY-FR*.5);MX.quadraticCurveTo(CX+FR*.24,CY-FR*.64,CX+FR*.45,CY-FR*.52);MX.stroke();
+    MX.strokeStyle='rgba(70,35,0,0.78)';MX.lineWidth=2.3;
+    MX.beginPath();MX.moveTo(CX-FR*.44,CY-FR*.27);MX.quadraticCurveTo(CX-FR*.26,CY-FR*.08,CX-FR*.1,CY-FR*.27);MX.stroke();
+    MX.lineWidth=2;MX.beginPath();MX.moveTo(CX+FR*.1,CY-FR*.34);MX.lineTo(CX+FR*.43,CY-FR*.17);MX.stroke();
+    MX.beginPath();MX.moveTo(CX+FR*.1,CY-FR*.17);MX.lineTo(CX+FR*.43,CY-FR*.34);MX.stroke();
+    MX.fillStyle='#FFD700';var sx=CX+FR*.62,sy=CY-FR*.60,sr=FR*.11;
+    MX.beginPath();for(var p=0;p<5;p++){var a=p*Math.PI*.4-Math.PI/2,ai=a+Math.PI*.2;if(p===0)MX.moveTo(sx+Math.cos(a)*sr,sy+Math.sin(a)*sr);else MX.lineTo(sx+Math.cos(a)*sr,sy+Math.sin(a)*sr);MX.lineTo(sx+Math.cos(ai)*sr*.42,sy+Math.sin(ai)*sr*.42);}MX.closePath();MX.fill();
+    MX.strokeStyle='rgba(70,35,0,0.78)';MX.lineWidth=2.3;
+    MX.beginPath();MX.moveTo(CX-FR*.40,CY+FR*.1);MX.quadraticCurveTo(CX,CY+FR*.52,CX+FR*.40,CY+FR*.1);MX.stroke();
+    MX.fillStyle='rgba(255,100,100,0.28)';
+    MX.beginPath();MX.ellipse(CX-FR*.58,CY+FR*.08,FR*.2,FR*.12,0,0,Math.PI*2);MX.fill();
+    MX.beginPath();MX.ellipse(CX+FR*.58,CY+FR*.08,FR*.2,FR*.12,0,0,Math.PI*2);MX.fill();
+  } else {
+    MX.strokeStyle='rgba(80,40,0,0.48)';MX.lineWidth=1.5;
+    MX.beginPath();MX.moveTo(CX-FR*.45,CY-FR*.52);MX.quadraticCurveTo(CX-FR*.24,CY-FR*.64,CX-FR*.08,CY-FR*.5);MX.stroke();
+    MX.beginPath();MX.moveTo(CX+FR*.08,CY-FR*.5);MX.quadraticCurveTo(CX+FR*.24,CY-FR*.64,CX+FR*.45,CY-FR*.52);MX.stroke();
+    MX.strokeStyle='rgba(70,35,0,0.78)';MX.lineWidth=2.3;
+    MX.beginPath();MX.moveTo(CX-FR*.44,CY-FR*.27);MX.quadraticCurveTo(CX-FR*.26,CY-FR*.08,CX-FR*.1,CY-FR*.27);MX.stroke();
+    MX.beginPath();MX.moveTo(CX+FR*.1,CY-FR*.27);MX.quadraticCurveTo(CX+FR*.26,CY-FR*.08,CX+FR*.44,CY-FR*.27);MX.stroke();
+    MX.beginPath();MX.moveTo(CX-FR*.40,CY+FR*.1);MX.quadraticCurveTo(CX,CY+FR*.52,CX+FR*.40,CY+FR*.1);MX.stroke();
+    MX.fillStyle='rgba(255,100,100,0.26)';
+    MX.beginPath();MX.ellipse(CX-FR*.58,CY+FR*.08,FR*.2,FR*.12,0,0,Math.PI*2);MX.fill();
+    MX.beginPath();MX.ellipse(CX+FR*.58,CY+FR*.08,FR*.2,FR*.12,0,0,Math.PI*2);MX.fill();
+  }
+  MX.restore();
+}
+
+function drawBubble(){
+  var bx=CX+FR*1.0,by=CY-FR-SZ*.07,bw=SZ*.32,bh=SZ*.082,br=SZ*.02;
+  MX.save();MX.fillStyle='rgba(255,255,255,0.96)';MX.strokeStyle='rgba(233,30,99,0.5)';MX.lineWidth=1.4;
+  MX.beginPath();MX.roundRect(bx-bw/2,by-bh/2,bw,bh,br);MX.fill();MX.stroke();
+  MX.fillStyle='rgba(255,255,255,0.96)';
+  MX.beginPath();MX.moveTo(CX+FR*.38,CY-FR*.55);MX.lineTo(bx-bw*.36,by+bh/2-1);MX.lineTo(bx-bw*.22,by+bh/2-1);MX.closePath();MX.fill();
+  MX.fillStyle='#c2185b';MX.font='800 '+Math.round(SZ*.037)+'px Helvetica,sans-serif';
+  MX.textAlign='center';MX.textBaseline='middle';MX.fillText(bubText,bx,by);MX.restore();
+}
+
+function drawFPs(){
+  fp.forEach(function(p){
+    MX.save();MX.globalAlpha=p.op;MX.translate(p.x,p.y);MX.rotate(p.rot*Math.PI/180);MX.scale(p.sc,p.sc);
+    var pH=SZ*.055;var gd=MX.createRadialGradient(0,-pH*.28,1,0,-pH*.45,pH);
+    gd.addColorStop(0,'#ffe0ec');gd.addColorStop(0.5,'#f48fb1');gd.addColorStop(1,'#e91e8c');
+    MX.fillStyle=gd;MX.beginPath();MX.moveTo(0,0);MX.bezierCurveTo(-pH*.28,-pH*.34,-pH*.30,-pH*.78,0,-pH);MX.bezierCurveTo(pH*.30,-pH*.78,pH*.28,-pH*.34,0,0);MX.closePath();MX.fill();MX.restore();
   });
 }
-window.speechSynthesis.getVoices();
-window.speechSynthesis.onvoiceschanged=function(){L('voices changed: '+window.speechSynthesis.getVoices().length);};
+
+function drawRing(){
+  tokens.forEach(function(l,i){
+    var pos=np(i),x=pos.x,y=pos.y,times=0;
+    sel.forEach(function(s){if(s===i)times++;});var isSel=times>0;
+    MX.save();
+    // Drop shadow
+    MX.shadowColor='rgba(0,0,0,0.25)';MX.shadowBlur=4;MX.shadowOffsetY=2;
+    // Node: solid white (unselected) or bright blue (selected)
+    // White ring separator between nodes and background
+    MX.fillStyle='rgba(255,255,255,0.3)';
+    MX.beginPath();MX.arc(x,y,NR+2,0,Math.PI*2);MX.fill();
+    MX.fillStyle=isSel?'#1565c0':'#ffffff';
+    MX.strokeStyle=isSel?'#0d47a1':'rgba(80,140,200,0.8)';
+    MX.lineWidth=isSel?2.5:1.8;
+    MX.beginPath();MX.arc(x,y,NR,0,Math.PI*2);MX.fill();MX.stroke();
+    MX.shadowColor='transparent';
+    // Letter: dark on white, white on blue — maximum contrast
+    var fs=Math.max(17,Math.round(NR*1.2));
+    MX.font='900 '+fs+'px Helvetica,Arial,sans-serif';
+    MX.textAlign='center';MX.textBaseline='middle';
+    MX.fillStyle=isSel?'#ffffff':'#0d1b6e';
+    MX.fillText(l,x,y+1);
+    MX.restore();
+  });
+}
+
+function drawLines(){
+  if(sel.length<2)return;MX.save();
+  MX.shadowColor='transparent';
+  for(var i=0;i<sel.length-1;i++){
+    var a=np(sel[i]),b=np(sel[i+1]);
+    MX.strokeStyle='rgba(255,255,255,0.25)';MX.lineWidth=10;MX.lineCap='round';
+    MX.beginPath();MX.moveTo(a.x,a.y);MX.lineTo(b.x,b.y);MX.stroke();
+    MX.strokeStyle='rgba(255,220,50,0.9)';MX.lineWidth=3;
+    MX.beginPath();MX.moveTo(a.x,a.y);MX.lineTo(b.x,b.y);MX.stroke();
+  }
+  MX.restore();
+}
+
+// ── TOUCH ─────────────────────────────────────────────
+function getXY(cx,cy){var r=MC.getBoundingClientRect();return{x:(cx-r.left)*(r.width>0?SZ/r.width:1),y:(cy-r.top)*(r.height>0?SZ/r.height:1)};}
+function findNode(cx,cy){
+  var p=getXY(cx,cy);
+  if(Math.sqrt((p.x-CX)*(p.x-CX)+(p.y-CY)*(p.y-CY))<=FR+10)return -1;
+  var best=-1,bd=NR*1.8; // tighter hit = less accidental selection
+  for(var i=0;i<tokens.length;i++){var pos=np(i),d=Math.sqrt((p.x-pos.x)*(p.x-pos.x)+(p.y-pos.y)*(p.y-pos.y));if(d<bd){bd=d;best=i;}}
+  return best;
+}
+function onS(cx,cy){
+  unlockAC();startBg();
+  flushSpeech(); // iOS: speak any pending text at touchstart
+  var n=findNode(cx,cy);if(n===-1){encourage();return;}if(n>=0){drag=true;sel=[n];pClick();draw();renderWD();}}
+function onM(cx,cy){if(!drag)return;var n=findNode(cx,cy);if(n>=0&&(sel.length===0||sel[sel.length-1]!==n)){sel.push(n);pClick();draw();renderWD();}}
+function onE(){
+  if(!drag&&sel.length===0)return;
+  drag=false;
+  submit();
+  flushSpeech(); // speak found word immediately (we're in touchend)
+}
+
+MC.addEventListener('touchstart',function(e){e.preventDefault();e.stopPropagation();if(e.touches.length)onS(e.touches[0].clientX,e.touches[0].clientY);},{passive:false,capture:true});
+MC.addEventListener('touchmove',function(e){e.preventDefault();e.stopPropagation();if(e.touches.length)onM(e.touches[0].clientX,e.touches[0].clientY);},{passive:false,capture:true});
+MC.addEventListener('touchend',function(e){e.preventDefault();e.stopPropagation();onE();},{passive:false,capture:true});
+MC.addEventListener('touchcancel',function(e){e.preventDefault();drag=false;sel=[];draw();renderWD();},{passive:false,capture:true});
+MC.addEventListener('mousedown',function(e){onS(e.clientX,e.clientY);});
+MC.addEventListener('mousemove',function(e){if(drag)onM(e.clientX,e.clientY);});
+window.addEventListener('mouseup',function(){onE();});
+
+// ── GAME ──────────────────────────────────────────────
+function getCur(){return sel.map(function(i){return tokens[i];}).join('');}
+function renderWD(){var d=document.getElementById('wd');d.innerHTML='';getCur().split('').reverse().forEach(function(l){var s=document.createElement('div');s.className='wl';s.textContent=l;d.appendChild(s);});}
+function updatePBar(){var b=document.getElementById('pbar');b.innerHTML='';for(var i=0;i<TP;i++){var d=document.createElement('span');d.style.cssText='font-size:10px;'+(i>=petals?'opacity:.2;filter:grayscale(1)':'');d.textContent='🌸';b.appendChild(d);}}
+function spawnFP(idx){var ang=pa(idx),px=CX+PR2*Math.cos(ang),py=CY+PR2*Math.sin(ang);for(var i=0;i<5;i++)fp.push({x:px+(Math.random()-.5)*12,y:py+(Math.random()-.5)*8,vx:(Math.random()-.5)*3,vy:-(Math.random()+.3),rot:Math.random()*360,vr:(Math.random()-.5)*12,op:1,sc:.4+Math.random()*.5,gr:.10});}
+function animFP(){if(anId)cancelAnimationFrame(anId);function step(){fp.forEach(function(p){p.x+=p.vx;p.y+=p.vy;p.vy+=p.gr;p.rot+=p.vr;p.op-=0.014;});fp=fp.filter(function(p){return p.op>0;});draw();if(fp.length)anId=requestAnimationFrame(step);else anId=null;}step();}
+
+function submit(){
+  var word=getCur(),msg=document.getElementById('msg'),isN=NAMES.indexOf(word)>=0,alr=found.indexOf(word)>=0;
+  if(isN&&!alr){
+    found.push(word);
+    LAYOUT.forEach(function(L){if(L.word!==word)return;L.word.split('').forEach(function(l,i){var r=L.dir==='h'?L.row:L.row+i,c=L.dir==='h'?L.col+i:L.col;if(grid[r]&&grid[r][c])grid[r][c].revealed=true;});});
+    drawCW();pOk();queueSpeech(word);flushSpeech();setFace('wink',1500);draw();
+    msg.textContent='✨ '+word+' – נמצא!';
+    var ch=document.createElement('div');ch.className='fc';ch.textContent=word;document.getElementById('found').appendChild(ch);
+    setTimeout(function(){if(msg.textContent.indexOf('נמצא')>=0)msg.textContent='';},1500);
+    if(found.length===NAMES.length){
+      bgOn=false;
+      setTimeout(function(){
+        petals=TP;setFace('wink');draw();pWin();
+        msg.textContent='🌸 כל המשפחה נמצאה! 🌸';
+        // Victory — queue all names, start speaking immediately
+        pendingTexts=[];
+        pendingTexts.push('כל הכבוד! עשית עבודה נהדרת');
+        for(var ni=0;ni<NAMES.length;ni++)pendingTexts.push(NAMES[ni]);
+        pendingTexts.push('כמה אנחנו ביחד. משפחה גדולה ומיוחדת! המשך יום מהנה');
+        flushSpeech();
+      },400);
+    }
+  } else if(sel.length>=2){
+    if(petals>0){
+      spawnFP(petals-1);petals--;pBad();
+      setFace(petals===0?'crying':'sad_tear',petals===0?0:1300);draw();animFP();updatePBar();
+      msg.textContent='❌ נסה שוב!';
+      setTimeout(function(){if(msg.textContent.indexOf('נסה')>=0)msg.textContent='';},1100);
+      if(petals===0){over=true;bgOn=false;setTimeout(function(){msg.textContent='🥀 כל העלים נפלו...';},700);}
+    }
+  }
+  sel=[];draw();renderWD();
+}
+
+document.getElementById('bdel').addEventListener('click',function(){unlockAC();startBg();flushSpeech();sel=[];draw();renderWD();document.getElementById('msg').textContent='';});
+document.getElementById('bsh').addEventListener('click',function(){unlockAC();startBg();flushSpeech();shuf(tokens);sel=[];draw();renderWD();});
+
+// ── ZOOM CROSSWORD ────────────────────────────────────
+function showZoomCW(){
+  var ov=document.getElementById('zoom-overlay');
+  ov.style.display='flex';
+  var zc=document.getElementById('cw-zoom');
+  var maxW=Math.min(window.innerWidth-32,420);
+  var maxH=window.innerHeight-120;
+  var zDPR=Math.min(window.devicePixelRatio||1,2);
+  var zCS=Math.floor(Math.min(maxW/GC,maxH/GR));
+  var zW=GC*zCS+4, zH=GR*zCS+4;
+  zc.width=zW*zDPR;zc.height=zH*zDPR;
+  zc.style.width=zW+'px';zc.style.height=zH+'px';
+  var zx=zc.getContext('2d');
+  zx.setTransform(zDPR,0,0,zDPR,0,0);
+  zx.clearRect(0,0,zW,zH);
+  zx.fillStyle='rgba(220,240,255,0.95)';
+  zx.beginPath();zx.roundRect(0,0,zW,zH,8);zx.fill();
+  for(var r=0;r<GR;r++)for(var c=0;c<GC;c++){
+    var cell=grid[r][c];if(!cell)continue;
+    var dc=GC-1-c,x=2+dc*zCS,y=2+r*zCS,s=zCS-2;
+    if(cell.revealed){
+      zx.fillStyle='#ffffff';zx.strokeStyle='#64b5f6';zx.lineWidth=1;
+      zx.beginPath();zx.roundRect(x,y,s,s,3);zx.fill();zx.stroke();
+      zx.fillStyle='#1a3a6b';zx.font='700 '+Math.floor(zCS*0.65)+'px Helvetica,sans-serif';
+      zx.textAlign='center';zx.textBaseline='middle';zx.fillText(cell.letter,x+s/2,y+s/2+1);
+    } else {
+      zx.fillStyle='rgba(180,220,255,0.6)';zx.strokeStyle='rgba(100,160,220,0.8)';zx.lineWidth=0.8;
+      zx.beginPath();zx.roundRect(x,y,s,s,3);zx.fill();zx.stroke();
+    }
+  }
+  if(zoomTimer)clearTimeout(zoomTimer);
+  zoomTimer=setTimeout(function(){ov.style.display='none';},4000);
+}
+var zoomTimer=null;
+document.getElementById('btn-zoom').addEventListener('click',function(){drainSpeechQueue();showZoomCW();});
+document.getElementById('cw-wrap').addEventListener('click',function(){unlockAC();startBg();flushSpeech();showZoomCW();});
+document.getElementById('zoom-overlay').addEventListener('click',function(){
+  if(zoomTimer)clearTimeout(zoomTimer);
+  this.style.display='none';
+});
+
+drawCW();draw();updatePBar();
+// Queue intro message — will speak on first touch
+queueSpeech('מצא את שמות המשפחה!');
+});
 </script>
-</body>
 </html>
