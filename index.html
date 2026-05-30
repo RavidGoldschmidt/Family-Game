@@ -205,35 +205,26 @@ function getHebVoice(){
 
 function queueSpeech(t){pendingTexts.push(t);}
 
-// Called synchronously inside touchstart/click — guaranteed on iOS
+// iOS Safari: speak directly inside gesture handler
 function flushSpeech(){
   if(!pendingTexts.length)return;
-  // Suspend AudioContext so speechSynthesis gets exclusive audio session
-  if(AC&&AC.state==='running'){
-    AC.suspend().then(function(){doSpeak();});
-  } else {
-    doSpeak();
-  }
-}
-
-function doSpeak(){
-  if(!pendingTexts.length){
-    // Resume music when done speaking
-    if(AC&&AC.state==='suspended'&&bgOn&&!musicMuted)AC.resume();
-    return;
-  }
   var text=pendingTexts.shift();
   try{
     window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(text);
     var v=getHebVoice();if(v)u.voice=v;
     u.lang='he-IL';u.rate=0.85;u.pitch=1.1;u.volume=1;
-    u.onend=function(){setTimeout(doSpeak,200);};
-    u.onerror=function(){setTimeout(doSpeak,200);};
+    u.onend=function(){
+      if(pendingTexts.length)setTimeout(flushSpeech,200);
+    };
+    u.onerror=function(){
+      if(pendingTexts.length)setTimeout(flushSpeech,200);
+    };
     window.speechSynthesis.speak(u);
-  }catch(e){setTimeout(doSpeak,200);}
+  }catch(e){
+    if(pendingTexts.length)setTimeout(flushSpeech,200);
+  }
 }
-
 function drainSpeechQueue(){flushSpeech();}
 function speak(t){queueSpeech(t);flushSpeech();}
 function speakNow(t){queueSpeech(t);flushSpeech();}
@@ -452,7 +443,8 @@ function onE(){
   if(!drag&&sel.length===0)return;
   drag=false;
   submit();
-  flushSpeech(); // speak found word immediately (we're in touchend)
+  flushSpeech();
+  startBg(); // ensure music starts even on first successful touch
 }
 
 MC.addEventListener('touchstart',function(e){e.preventDefault();e.stopPropagation();if(e.touches.length)onS(e.touches[0].clientX,e.touches[0].clientY);},{passive:false,capture:true});
