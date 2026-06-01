@@ -507,7 +507,7 @@ MC.addEventListener('touchend',  function(e){e.preventDefault();e.stopPropagatio
 MC.addEventListener('touchcancel',function(e){e.preventDefault();drag=false;sel=[];draw();renderWD();},{passive:false,capture:true});
 MC.addEventListener('mousedown',function(e){onS(e.clientX,e.clientY);});
 MC.addEventListener('mousemove',function(e){if(drag)onM(e.clientX,e.clientY);});
-window.addEventListener('mouseup',function(){onE();});
+window.addEventListener('mouseup',function(){onE();flushSpeech();});
 
 // ── GAME ─────────────────────────────────────────────────
 function getCur(){return sel.map(function(i){return tokens[i];}).join('');}
