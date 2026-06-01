@@ -197,6 +197,8 @@ function flushSpeech(){
 // ── TOUCH SOUND ──────────────────────────────────────────
 var touchSoundAC = null;
 function playTouchSound(){
+  // Don't play if speech is active or pending (AC blocks speechSynthesis on iOS)
+  if(pendingTexts.length || window.speechSynthesis.speaking) return;
   try{
     if(!touchSoundAC) touchSoundAC = new(window.AudioContext||window.webkitAudioContext)();
     var ac = touchSoundAC;
@@ -487,12 +489,12 @@ function onS(cx,cy){
   flushSpeech();
   var n=findNode(cx,cy);
   if(n===-1){encourage();return;}
-  if(n>=0){drag=true;sel=[n];playTouchSound();draw();renderWD();}
+  if(n>=0){drag=true;sel=[n];setTimeout(playTouchSound,50);draw();renderWD();}
 }
 function onM(cx,cy){
   if(!drag)return;
   var n=findNode(cx,cy);
-  if(n>=0&&(sel.length===0||sel[sel.length-1]!==n)){sel.push(n);playTouchSound();draw();renderWD();}
+  if(n>=0&&(sel.length===0||sel[sel.length-1]!==n)){sel.push(n);setTimeout(playTouchSound,50);draw();renderWD();}
 }
 function onE(){
   if(!drag&&sel.length===0)return;
