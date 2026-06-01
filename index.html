@@ -58,6 +58,26 @@ window.addEventListener('load', function(){
 
 // ── DATA ──────────────────────────────────────────────
 var NAMES=['אורי','רוחמה','אדוה','עופר','דלית','בארי','אפרת','מיקה','אבי','עדי','סוניה','יונה','ניר','רביד','להב','עלמה','איה','נגה'];
+var NAME_EXTRAS = {
+  'אורי': 'אורי — אור גדול!',
+  'רוחמה': 'רוחמה — כמו רחמים!',
+  'אדוה': 'אדוה — שמחה ואהבה!',
+  'עופר': 'עופר — עופר כמו צבי!',
+  'דלית': 'דלית — דלית ענבים!',
+  'בארי': 'בארי — חזק כמו ארי!',
+  'אפרת': 'אפרת — עיר בית לחם!',
+  'מיקה': 'מיקה — מוזיקה!',
+  'אבי': 'אבי — האבא שלי!',
+  'עדי': 'עדי — עדי תכשיטים!',
+  'סוניה': 'סוניה — שמש בספרדית!',
+  'יונה': 'יונה — יונה שלום!',
+  'ניר': 'ניר — שדה ניר!',
+  'רביד': 'רביד — רביד זהב!',
+  'להב': 'להב — להב אש!',
+  'עלמה': 'עלמה — עלמה יפה!',
+  'איה': 'איה — איה הציפור!',
+  'נגה': 'נגה — נגה כוכב!'
+};
 var GR=17,GC=16,TP=16;
 var CWS=10;
 
@@ -108,7 +128,7 @@ MC.style.width=SZ+'px'; MC.style.height=SZ+'px';
 
 var CX=SZ/2,CY=SZ*0.50;
 var FR=SZ*0.105;
-var LR=SZ*0.421,NR=SZ*0.067;
+var LR=SZ*0.414,NR=SZ*0.072;
 
 function pa(i){return 2*Math.PI*i/TP - Math.PI/2;}
 
@@ -172,6 +192,28 @@ function flushSpeech(){
   var list = pendingTexts.slice();
   pendingTexts = [];
   sayList(list, 0);
+}
+
+// ── TOUCH SOUND ──────────────────────────────────────────
+var touchSoundAC = null;
+function playTouchSound(){
+  try{
+    if(!touchSoundAC) touchSoundAC = new(window.AudioContext||window.webkitAudioContext)();
+    var ac = touchSoundAC;
+    if(ac.state==='suspended') ac.resume();
+    // Random pitch between 500-900Hz for variety
+    var freq = 500 + Math.random() * 400;
+    var o = ac.createOscillator();
+    var g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq, ac.currentTime);
+    o.frequency.exponentialRampToValueAtTime(freq*0.85, ac.currentTime+0.08);
+    g.gain.setValueAtTime(0.18, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+0.10);
+    o.start(ac.currentTime);
+    o.stop(ac.currentTime+0.11);
+  }catch(e){}
 }
 
 // ── FUNNY SOUND ON MISTAKE ───────────────────────────────
@@ -445,12 +487,12 @@ function onS(cx,cy){
   flushSpeech();
   var n=findNode(cx,cy);
   if(n===-1){encourage();return;}
-  if(n>=0){drag=true;sel=[n];draw();renderWD();}
+  if(n>=0){drag=true;sel=[n];playTouchSound();draw();renderWD();}
 }
 function onM(cx,cy){
   if(!drag)return;
   var n=findNode(cx,cy);
-  if(n>=0&&(sel.length===0||sel[sel.length-1]!==n)){sel.push(n);draw();renderWD();}
+  if(n>=0&&(sel.length===0||sel[sel.length-1]!==n)){sel.push(n);playTouchSound();draw();renderWD();}
 }
 function onE(){
   if(!drag&&sel.length===0)return;
@@ -504,10 +546,15 @@ function submit(){
     var ch=document.createElement('div');ch.className='fc';ch.textContent=word;
     document.getElementById('found').appendChild(ch);
     setTimeout(function(){if(msg.textContent.indexOf('נמצא')>=0)msg.textContent='';},1500);
-    // Speak immediately — setTimeout(0) keeps gesture context on iOS
+    // Speak name + related phrase
     (function(w){
       setTimeout(function(){
-        sayOne(w, null);
+        var extra = NAME_EXTRAS[w];
+        if(extra){
+          sayOne(w, function(){ setTimeout(function(){ sayOne(extra, null); }, 100); });
+        } else {
+          sayOne(w, null);
+        }
       }, 0);
     })(word);
     if(found.length===NAMES.length){
