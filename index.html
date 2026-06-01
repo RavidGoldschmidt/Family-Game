@@ -546,17 +546,9 @@ function submit(){
     var ch=document.createElement('div');ch.className='fc';ch.textContent=word;
     document.getElementById('found').appendChild(ch);
     setTimeout(function(){if(msg.textContent.indexOf('נמצא')>=0)msg.textContent='';},1500);
-    // Speak name + related phrase
-    (function(w){
-      setTimeout(function(){
-        var extra = NAME_EXTRAS[w];
-        if(extra){
-          sayOne(w, function(){ setTimeout(function(){ sayOne(extra, null); }, 100); });
-        } else {
-          sayOne(w, null);
-        }
-      }, 0);
-    })(word);
+    // Speak directly — no setTimeout (iOS requires sync gesture call)
+    queueSpeech(word);
+    if(NAME_EXTRAS[word]) queueSpeech(NAME_EXTRAS[word]);
     if(found.length===NAMES.length){
       setTimeout(function(){
         petals=TP;setFace('wink');draw();
