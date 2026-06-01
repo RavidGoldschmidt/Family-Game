@@ -6,64 +6,66 @@
 <title>משחק המשפחה</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
-html{height:100%;overflow:hidden;}
-body{font-family:Helvetica,Arial,sans-serif;direction:rtl;
-  background:linear-gradient(180deg,#b8e4f7 0%,#7ec8e3 40%,#55b3d0 55%,#72c472 55%,#4a9e4a 100%) fixed;
+html,body{
+  height:100%;width:100%;
+  overflow:hidden;
+  position:fixed;
+  top:0;left:0;
+}
+body{
+  font-family:Helvetica,Arial,sans-serif;
+  direction:rtl;
   display:flex;flex-direction:column;align-items:center;
-  padding:6px 4px 8px;
-  height:100%;overflow:hidden;
-  overscroll-behavior:none;}
-h1{color:#fff;font-size:18px;font-weight:800;margin-bottom:4px;text-shadow:0 2px 6px rgba(0,0,0,0.3);}
-#cw-wrap{background:rgba(255,255,255,0.18);border-radius:10px;padding:4px;margin-bottom:3px;border:1px solid rgba(255,255,255,0.4);display:inline-flex;justify-content:center;cursor:pointer;}
+  padding:4px 4px 6px;
+  background:linear-gradient(180deg,#b8e4f7 0%,#7ec8e3 40%,#55b3d0 55%,#72c472 55%,#4a9e4a 100%);
+  background-attachment:fixed;
+  min-height:100%;
+}
+h1{color:#fff;font-size:17px;font-weight:800;margin-bottom:3px;text-shadow:0 2px 6px rgba(0,0,0,0.3);}
+
+#cw-wrap{background:rgba(255,255,255,0.18);border-radius:10px;padding:3px;margin-bottom:0px;border:1px solid rgba(255,255,255,0.4);display:inline-flex;justify-content:center;cursor:pointer;flex-shrink:0;}
 #cw-wrap:active{background:rgba(255,255,255,0.30);}
-#wd{height:28px;display:flex;flex-direction:row-reverse;gap:4px;justify-content:center;align-items:flex-end;margin:1px 0;}
-.wl{min-width:16px;height:26px;border-bottom:2.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;padding:0 2px;}
-#mc{touch-action:none;cursor:pointer;display:block;}
-#intro-msg{font-size:13px;font-weight:800;color:#fff;text-align:center;padding:2px 0;}
-#timed-msg{font-size:13px;font-weight:800;color:#fff;min-height:16px;text-align:center;padding:2px 8px;border-radius:10px;transition:all 0.3s;}
+#wd{height:24px;display:flex;flex-direction:row-reverse;gap:3px;justify-content:center;align-items:flex-end;margin:1px 0;flex-shrink:0;}
+.wl{min-width:14px;height:22px;border-bottom:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;padding:0 2px;}
+#mc{touch-action:none;cursor:pointer;display:block;flex-shrink:0;margin-top:-20px;}
+#intro-msg{font-size:17px;font-weight:800;color:#fff;text-align:center;padding:3px 0;flex-shrink:0;text-shadow:0 2px 5px rgba(0,0,0,0.3);}
+#timed-msg{font-size:12px;font-weight:800;color:#fff;min-height:14px;text-align:center;padding:2px 8px;border-radius:10px;transition:all 0.3s;flex-shrink:0;}
 #timed-msg.show{background:rgba(0,0,0,0.22);}
-#msg{font-size:13px;font-weight:800;color:#fff;min-height:16px;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.3);}
-#pbar{display:flex;gap:1px;justify-content:center;flex-wrap:wrap;max-width:320px;}
-#found{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:340px;}
-.fc{font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;background:rgba(255,255,255,0.28);color:#fff;border:1px solid rgba(255,255,255,0.6);}
-.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:3px;}
-.btn{padding:6px 13px;border-radius:20px;border:2px solid rgba(255,255,255,0.75);background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:Helvetica,Arial,sans-serif;}
-.btn:active{background:rgba(255,255,255,0.4);}
-#zoom-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,50,0.88);z-index:200;align-items:center;justify-content:center;flex-direction:column;}
-#zoom-overlay.show{display:flex;}
+#msg{font-size:12px;font-weight:800;color:#fff;min-height:14px;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.3);flex-shrink:0;}
+#pbar{display:flex;gap:1px;justify-content:center;flex-wrap:wrap;max-width:320px;flex-shrink:0;}
+#found{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:340px;flex-shrink:0;}
+.fc{font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(255,255,255,0.28);color:#fff;border:1px solid rgba(255,255,255,0.6);}
+
+
 </style>
 </head>
 <body>
 <h1>🌸 משחק המשפחה</h1>
 <div id="cw-wrap"><canvas id="cw"></canvas></div>
+
 <div id="wd"></div>
 <canvas id="mc"></canvas>
-<div id="intro-msg">👆 מצא את שמות המשפחה!</div>
+<div id="intro-msg">👨‍👩‍👧‍👦 מצא את שמות בני המשפחה!</div>
 <div id="timed-msg"></div>
 <div id="msg"></div>
-<div id="pbar"></div>
+<div id="pbar" style="display:none;"></div>
 <div id="found"></div>
-<div class="btns">
-  <button class="btn" id="bdel">✕ מחק</button>
-  <button class="btn" id="bsh">⟳ ערבב</button>
-  <button class="btn" id="bzoom">🔍 הגדל</button>
-  <button class="btn" id="bspeak">🔊 קרא</button>
-</div>
-<div id="zoom-overlay">
-  <div style="color:#fff;font-size:14px;font-weight:800;margin-bottom:8px;">📋 הצלב-מילים — לחץ לסגירה</div>
-  <canvas id="cw-zoom" style="border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);"></canvas>
-</div>
+
+
 
 <script>
 // Prevent ALL page scrolling on iOS
 document.addEventListener('touchmove', function(e){ e.preventDefault(); }, {passive: false});
-document.addEventListener('touchstart', function(e){
-  // Allow default only for buttons and inputs
-  if(e.target.tagName==='BUTTON'||e.target.tagName==='INPUT')return;
-}, {passive: false});
+
+window.addEventListener('load', function(){
 
 // ── DATA ──────────────────────────────────────────────
 var NAMES=['אורי','רוחמה','אדוה','עופר','דלית','בארי','אפרת','מיקה','אבי','עדי','סוניה','יונה','ניר','רביד','להב','עלמה','איה','נגה'];
+var GR=17,GC=16,TP=16;
+var CWS=14;
+
+
+// ── LAYOUT ───────────────────────────────────────────────
 var LAYOUT=[
   {word:'רוחמה',row:13,col:3,dir:'h'},{word:'אורי',row:12,col:4,dir:'v'},
   {word:'אדוה',row:10,col:7,dir:'v'},{word:'דלית',row:15,col:2,dir:'h'},
@@ -75,7 +77,6 @@ var LAYOUT=[
   {word:'סוניה',row:0,col:12,dir:'v'},{word:'יונה',row:3,col:12,dir:'h'},
   {word:'עופר',row:1,col:11,dir:'h'},{word:'רביד',row:14,col:4,dir:'h'}
 ];
-var GR=17,GC=16,TP=16;
 
 // ── GRID ──────────────────────────────────────────────
 function buildGrid(){
@@ -94,7 +95,6 @@ var grid=buildGrid();
 
 // ── SIZES ──────────────────────────────────────────────
 var VW=Math.min(window.innerWidth||375,390);
-var CWS=14;
 var DPR=Math.min(window.devicePixelRatio||1,3);
 
 // Crossword canvas
@@ -104,15 +104,14 @@ CWel.width=Math.round(CWW*DPR); CWel.height=Math.round(CWH*DPR);
 CWel.style.width=CWW+'px'; CWel.style.height=CWH+'px';
 
 // Main canvas
-var SZ=Math.min(VW-4,300);
+var SZ=Math.min(VW-4,Math.round(window.innerHeight*0.44));
 var MC=document.getElementById('mc'),MX=MC.getContext('2d');
 MC.width=Math.round(SZ*DPR); MC.height=Math.round(SZ*DPR);
 MC.style.width=SZ+'px'; MC.style.height=SZ+'px';
 
-var CX=SZ/2,CY=SZ/2;
+var CX=SZ/2,CY=SZ*0.50;
 var FR=SZ*0.105;
-var PR1=SZ*0.18,PR2=SZ*0.28,PH1=SZ*0.065,PH2=SZ*0.075;
-var LR=SZ*0.44,NR=SZ*0.055;
+var LR=SZ*0.421,NR=SZ*0.067;
 
 function pa(i){return 2*Math.PI*i/TP - Math.PI/2;}
 
@@ -131,51 +130,87 @@ var face='happy',fTimer=null,bubOn=false,bubText='',bTimer=null;
 var ENC=['!כל הכבוד','!יופי','!מעולה','!אלוף','!נפלא','!מדהים'];
 
 // ── SPEECH ──────────────────────────────────────────────
-var pendingTexts=[];
-var heVoice=null;
+var pendingTexts = [];
+var heVoice = null;
+
 function loadVoice(){
-  if(heVoice)return;
-  var vs=window.speechSynthesis.getVoices();
+  var vs = window.speechSynthesis.getVoices();
   for(var i=0;i<vs.length;i++){
-    if(vs[i].lang&&vs[i].lang.toLowerCase().indexOf('he')===0){heVoice=vs[i];return;}
+    if(vs[i].lang && vs[i].lang.toLowerCase().indexOf('he')===0){
+      heVoice = vs[i]; break;
+    }
   }
 }
 if(window.speechSynthesis){
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged=function(){loadVoice();};
-}
-// Speak a single text, call cb when done
-function doSpeak(text,cb){
   loadVoice();
-  window.speechSynthesis.cancel();
-  var u=new SpeechSynthesisUtterance(text);
-  if(heVoice)u.voice=heVoice;
-  u.lang='he-IL';u.rate=0.85;u.pitch=1.1;u.volume=1;
-  u.onend=function(){if(cb)setTimeout(cb,200);};
-  u.onerror=function(){if(cb)setTimeout(cb,300);};
+  window.speechSynthesis.onvoiceschanged = loadVoice;
+}
+
+// Speak one text — NO cancel before speaking (cancel breaks iOS)
+function sayOne(text, onDone){
+  var u = new SpeechSynthesisUtterance(text);
+  if(!heVoice) loadVoice();
+  if(heVoice) u.voice = heVoice;
+  u.lang = 'he-IL';
+  u.rate = 0.85;
+  u.volume = 1;
+  u.onend = function(){ if(onDone) setTimeout(onDone, 250); };
+  u.onerror = function(){ if(onDone) setTimeout(onDone, 250); };
   window.speechSynthesis.speak(u);
 }
-// Speak list sequentially
-function speakList(list,i){
-  if(!i)i=0;
-  if(i>=list.length)return;
-  doSpeak(list[i],function(){speakList(list,i+1);});
+
+// Speak list one by one
+function sayList(list, i){
+  if(!i) i = 0;
+  if(i >= list.length) return;
+  sayOne(list[i], function(){ sayList(list, i+1); });
 }
-// Add to pending queue - spoken on next touchstart
-function queueSpeech(t){pendingTexts.push(t);}
-// Flush queue - call from touchstart/click ONLY
+
+// Queue speech — spoken on next touchstart (iOS requires direct gesture)
+function queueSpeech(t){ pendingTexts.push(t); }
+
+// Call this from touchstart/click — guaranteed iOS gesture
 function flushSpeech(){
-  if(!pendingTexts.length)return;
-  var list=pendingTexts.slice();
-  pendingTexts=[];
-  speakList(list,0);
+  if(!pendingTexts.length) return;
+  var list = pendingTexts.slice();
+  pendingTexts = [];
+  sayList(list, 0);
+}
+
+// ── FUNNY SOUND ON MISTAKE ───────────────────────────────
+function playFunnySound(){
+  try{
+    var ac=new(window.AudioContext||window.webkitAudioContext)();
+    // Descending "boing" sound
+    var freqs=[400,320,240,180,140];
+    freqs.forEach(function(f,i){
+      var o=ac.createOscillator(),g=ac.createGain();
+      o.connect(g);g.connect(ac.destination);
+      o.type='sine';
+      o.frequency.setValueAtTime(f,ac.currentTime+i*0.07);
+      g.gain.setValueAtTime(0.25,ac.currentTime+i*0.07);
+      g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+i*0.07+0.12);
+      o.start(ac.currentTime+i*0.07);
+      o.stop(ac.currentTime+i*0.07+0.13);
+    });
+    // Add a funny "wobble" on top
+    var o2=ac.createOscillator(),g2=ac.createGain();
+    o2.connect(g2);g2.connect(ac.destination);
+    o2.type='sawtooth';
+    o2.frequency.setValueAtTime(300,ac.currentTime);
+    o2.frequency.exponentialRampToValueAtTime(80,ac.currentTime+0.4);
+    g2.gain.setValueAtTime(0.15,ac.currentTime);
+    g2.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.4);
+    o2.start(ac.currentTime);o2.stop(ac.currentTime+0.4);
+  }catch(e){}
 }
 
 // ── TIMED MESSAGES ──────────────────────────────────────
 function showTimedMsg(txt,spk){
   var el=document.getElementById('timed-msg');
   el.textContent=txt;el.classList.add('show');
-  queueSpeech(spk||txt.replace(/[🤔👏🤩😤]/g,'').trim());
+  var spkText = spk||txt.replace(/[🤔👏🤩😤]/g,'').trim();
+  queueSpeech(spkText); // spoken on next touch (timed msgs can't use gesture)
   setTimeout(function(){el.classList.remove('show');el.textContent='';},5000);
 }
 setTimeout(function(){showTimedMsg('אילו עוד בני משפחה אתה מכיר? 🤔','אילו עוד בני משפחה אתה מכיר?');},60000);
@@ -220,26 +255,45 @@ function drawStem(){
   MX.restore();
 }
 
-function drawOnePetal(px,py,ang,PH,present){
-  MX.save();MX.translate(px,py);MX.rotate(ang+Math.PI/2);
-  if(present){
-    var gd=MX.createRadialGradient(0,-PH*.25,1,0,-PH*.45,PH);
-    gd.addColorStop(0,'#ffe0ec');gd.addColorStop(0.35,'#f48fb1');gd.addColorStop(0.75,'#e91e8c');gd.addColorStop(1,'#c2185b');
-    MX.fillStyle=gd;MX.strokeStyle='rgba(194,24,91,0.18)';MX.lineWidth=0.6;
-  } else {
-    MX.fillStyle='rgba(255,255,255,0.04)';MX.strokeStyle='rgba(255,255,255,0.14)';MX.lineWidth=0.6;MX.setLineDash([2,2]);
-  }
-  MX.beginPath();MX.moveTo(0,0);MX.bezierCurveTo(-PH*.26,-PH*.32,-PH*.28,-PH*.76,0,-PH);MX.bezierCurveTo(PH*.28,-PH*.76,PH*.26,-PH*.32,0,0);MX.closePath();MX.fill();MX.stroke();MX.setLineDash([]);MX.restore();
-}
-
 function drawPetals(){
-  for(var i=0;i<8;i++){
-    var ang=2*Math.PI*i/8-Math.PI/2;
-    drawOnePetal(CX+PR1*Math.cos(ang),CY+PR1*Math.sin(ang),ang,PH1,i<petals);
-  }
-  for(var i=0;i<8;i++){
-    var ang=2*Math.PI*i/8-Math.PI/2+Math.PI/8;
-    drawOnePetal(CX+PR2*Math.cos(ang),CY+PR2*Math.sin(ang),ang,PH2,i+8<petals);
+  // 16 petals directly around flower center — real flower look
+  var PR=FR*1.75;  // slightly closer to center
+  var PH=FR*0.88;  // slightly shorter petals
+  var PW=PH*0.38;  // petal width control
+
+  for(var i=0;i<TP;i++){
+    var ang=2*Math.PI*i/TP - Math.PI/2;
+    var px=CX+PR*Math.cos(ang);
+    var py=CY+PR*Math.sin(ang);
+    var present=i<petals;
+
+    MX.save();
+    MX.translate(px,py);
+    MX.rotate(ang+Math.PI/2);
+
+    if(present){
+      var gd=MX.createRadialGradient(0,-PH*.2,1,0,-PH*.5,PH);
+      gd.addColorStop(0,'#fff0f6');
+      gd.addColorStop(0.3,'#f9a8c9');
+      gd.addColorStop(0.7,'#e91e8c');
+      gd.addColorStop(1,'#c2185b');
+      MX.fillStyle=gd;
+      MX.strokeStyle='rgba(194,24,91,0.15)';
+      MX.lineWidth=0.5;
+    } else {
+      MX.fillStyle='rgba(255,255,255,0.08)';
+      MX.strokeStyle='rgba(255,255,255,0.2)';
+      MX.lineWidth=0.5;
+      MX.setLineDash([2,3]);
+    }
+
+    MX.beginPath();
+    MX.moveTo(0, FR*0.3);
+    MX.bezierCurveTo(-PW, 0, -PW, -PH*0.8, 0, -PH);
+    MX.bezierCurveTo( PW, -PH*0.8,  PW, 0, 0, FR*0.3);
+    MX.closePath();
+    MX.fill();MX.stroke();MX.setLineDash([]);
+    MX.restore();
   }
 }
 
@@ -341,7 +395,7 @@ function drawRing(){
     MX.shadowColor='transparent';
     MX.fillStyle=isSel?'#1565c0':'#ffffff';
     MX.beginPath();MX.arc(x,y,NR,0,Math.PI*2);MX.fill();MX.stroke();
-    var fs=Math.max(14,Math.round(NR*1.0));
+    var fs=Math.max(16,Math.round(NR*1.1));
     MX.font='800 '+fs+'px Helvetica,Arial,sans-serif';
     MX.textAlign='center';MX.textBaseline='middle';
     MX.fillStyle=isSel?'#ffffff':'#0d1b6e';
@@ -368,7 +422,7 @@ function setFace(s,d){face=s;if(fTimer)clearTimeout(fTimer);fTimer=null;if(d>0)f
 function encourage(){
   var p=ENC[0|Math.random()*ENC.length];
   bubText=p;bubOn=true;setFace('wink',1800);draw();
-  queueSpeech(p.replace('!',''));
+  setTimeout(function(){ sayOne(p.replace('!',''), null); }, 0);
   if(bTimer)clearTimeout(bTimer);
   bTimer=setTimeout(function(){bubOn=false;draw();},2400);
 }
@@ -381,7 +435,7 @@ function getXY(cx,cy){
 function findNode(cx,cy){
   var p=getXY(cx,cy);
   if(Math.sqrt((p.x-CX)*(p.x-CX)+(p.y-CY)*(p.y-CY))<=FR+10)return -1;
-  var best=-1,bd=NR*2.0;
+  var best=-1,bd=NR*1.6; // tighter = less accidental hits
   for(var i=0;i<tokens.length;i++){
     var pos=np(i),d=Math.sqrt((p.x-pos.x)*(p.x-pos.x)+(p.y-pos.y)*(p.y-pos.y));
     if(d<bd){bd=d;best=i;}
@@ -430,25 +484,16 @@ function updatePBar(){
     d.textContent='🌸';b.appendChild(d);
   }
 }
-function spawnFP(idx){
-  var ang=pa(idx),px=CX+PR2*Math.cos(ang),py=CY+PR2*Math.sin(ang);
-  for(var i=0;i<5;i++)fp.push({x:px+(Math.random()-.5)*12,y:py+(Math.random()-.5)*8,vx:(Math.random()-.5)*3,vy:-(Math.random()+.3),rot:Math.random()*360,vr:(Math.random()-.5)*12,op:1,sc:.4+Math.random()*.5,gr:.10});
-}
-function animFP(){
-  if(anId)cancelAnimationFrame(anId);
-  function step(){
-    fp.forEach(function(p){p.x+=p.vx;p.y+=p.vy;p.vy+=p.gr;p.rot+=p.vr;p.op-=0.014;});
-    fp=fp.filter(function(p){return p.op>0;});draw();
-    if(fp.length)anId=requestAnimationFrame(step);else anId=null;
-  }
-  step();
-}
+function spawnFP(idx){}  // no falling petals
+function animFP(){}
 
 function submit(){
   var word=getCur(),msg=document.getElementById('msg');
   var isN=NAMES.indexOf(word)>=0,alr=found.indexOf(word)>=0;
   if(isN&&!alr){
     found.push(word);
+
+    // Reveal word in crossword
     LAYOUT.forEach(function(L){
       if(L.word!==word)return;
       L.word.split('').forEach(function(l,i){
@@ -456,25 +501,33 @@ function submit(){
         if(grid[r]&&grid[r][c])grid[r][c].revealed=true;
       });
     });
-    drawCW();setFace('wink',1500);draw();
+    drawCW();
+    setFace('wink',1500);draw();
     msg.textContent='✨ '+word+' – נמצא!';
     var ch=document.createElement('div');ch.className='fc';ch.textContent=word;
     document.getElementById('found').appendChild(ch);
     setTimeout(function(){if(msg.textContent.indexOf('נמצא')>=0)msg.textContent='';},1500);
-    // Queue word to speak on next touch
-    queueSpeech(word);
+    // Speak immediately — setTimeout(0) keeps gesture context on iOS
+    (function(w){
+      setTimeout(function(){
+        sayOne(w, null);
+      }, 0);
+    })(word);
     if(found.length===NAMES.length){
       setTimeout(function(){
         petals=TP;setFace('wink');draw();
         msg.textContent='🌸 כל המשפחה נמצאה! 🌸';
-        // Queue victory speech
-        pendingTexts=['כל הכבוד! עשית עבודה נהדרת'].concat(NAMES).concat(['כמה אנחנו ביחד. משפחה גדולה ומיוחדת! המשך יום מהנה']);
+        // Victory speech immediately
+        setTimeout(function(){
+          sayList(['כל הכבוד! עשית עבודה נהדרת'].concat(NAMES).concat(['כמה אנחנו ביחד. משפחה גדולה ומיוחדת! ואנחנו 18 איש — וזה חי בגימטריה — לחיים! המשך יום מהנה']), 0);
+        }, 0);
       },400);
     }
   } else if(sel.length>=2){
     if(petals>0){
       spawnFP(petals-1);petals--;
       setFace(petals===0?'crying':'sad_tear',petals===0?0:1300);
+      playFunnySound();
       draw();animFP();updatePBar();
       msg.textContent='❌ נסה שוב!';
       setTimeout(function(){if(msg.textContent.indexOf('נסה')>=0)msg.textContent='';},1100);
@@ -488,7 +541,7 @@ function submit(){
 var zoomTimer=null;
 function showZoom(){
   var ov=document.getElementById('zoom-overlay');
-  ov.classList.add('show');
+  ov.style.display='flex';
   var zc=document.getElementById('cw-zoom');
   var maxW=Math.min(window.innerWidth-32,400),maxH=window.innerHeight-120;
   var zCS=Math.floor(Math.min(maxW/GC,maxH/GR));
@@ -513,38 +566,22 @@ function showZoom(){
     }
   }
   if(zoomTimer)clearTimeout(zoomTimer);
-  zoomTimer=setTimeout(function(){ov.classList.remove('show');},4000);
+  zoomTimer=setTimeout(function(){ov.style.display='none';},4000);
 }
 document.getElementById('zoom-overlay').addEventListener('click',function(){
-  if(zoomTimer)clearTimeout(zoomTimer);
-  this.classList.remove('show');
+  if(zoomTimer)clearTimeout(zoomTimer);this.style.display='none';
 });
-document.getElementById('bzoom').addEventListener('click',function(){flushSpeech();showZoom();});
+
 document.getElementById('cw-wrap').addEventListener('click',function(){flushSpeech();showZoom();});
-document.getElementById('bdel').addEventListener('click',function(){flushSpeech();sel=[];draw();renderWD();document.getElementById('msg').textContent='';});
-document.getElementById('bsh').addEventListener('click',function(){flushSpeech();shuf(tokens);sel=[];draw();renderWD();});
-
-// 🔊 Speak button — direct click = guaranteed iOS gesture
-document.getElementById('bspeak').addEventListener('click',function(){
-  loadVoice();
-  if(pendingTexts.length>0){
-    // Speak queued texts
-    var list=pendingTexts.slice();
-    pendingTexts=[];
-    speakList(list,0);
-  } else if(found.length>0){
-    // Re-read last found name
-    doSpeak(found[found.length-1],null);
-  }
-});
-
-// Prevent page scroll when touching game canvas
-document.addEventListener('touchmove', function(e){
-  if(e.target===MC||e.target===CWel)e.preventDefault();
-},{passive:false});
 
 // ── INIT ─────────────────────────────────────────────────
 drawCW();draw();updatePBar();
+
+}); // end window.onload
 </script>
+<div id="zoom-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,50,0.88);z-index:200;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="color:#fff;font-size:14px;font-weight:800;margin-bottom:8px;">📋 לחץ לסגירה</div>
+  <canvas id="cw-zoom" style="border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);"></canvas>
+</div>
 </body>
 </html>
