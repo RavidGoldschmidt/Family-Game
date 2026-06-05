@@ -57,6 +57,14 @@ document.addEventListener('touchmove', function(e){ e.preventDefault(); }, {pass
 window.addEventListener('load', function(){
 
 // ── DATA ──────────────────────────────────────────────
+function isValidPrefix(selArr){
+  if(!selArr.length) return true;
+  var word=selArr.map(function(i){return tokens[i];}).join('');
+  for(var n=0;n<NAMES.length;n++){
+    if(NAMES[n].indexOf(word)===0) return true;
+  }
+  return false;
+}
 var NAMES=['אורי','רוחמה','אדוה','עופר','דלית','בארי','אפרת','מיקה','אבי','עדי','סוניה','יונה','ניר','רביד','להב','עלמה','איה','נגה'];
 var NAME_EXTRAS = {
   'אורי': 'אורי — אור גדול!',
@@ -143,6 +151,7 @@ function np(i){var a=2*Math.PI*i/tokens.length-Math.PI/2;return{x:CX+LR*Math.cos
 
 // ── STATE ──────────────────────────────────────────────
 var petals=TP,found=[],sel=[],drag=false,fp=[],anId=null;
+// foundWord now uses HTML overlay
 var face='happy',fTimer=null,bubOn=false,bubText='',bTimer=null;
 var ENC=['!כל הכבוד','!יופי','!מעולה','!אלוף','!נפלא','!מדהים'];
 
@@ -445,17 +454,54 @@ function drawRing(){
   });
 }
 
+
 function drawLines(){
   if(sel.length<2)return;
-  MX.save();MX.shadowColor='transparent';
+  MX.save();
+  // Animated rainbow with stars
+  var t=Date.now()/1000;
   for(var i=0;i<sel.length-1;i++){
     var a=np(sel[i]),b=np(sel[i+1]);
-    MX.strokeStyle='rgba(255,255,255,0.2)';MX.lineWidth=10;MX.lineCap='round';
-    MX.beginPath();MX.moveTo(a.x,a.y);MX.lineTo(b.x,b.y);MX.stroke();
-    MX.strokeStyle='rgba(255,220,50,0.9)';MX.lineWidth=3;
-    MX.beginPath();MX.moveTo(a.x,a.y);MX.lineTo(b.x,b.y);MX.stroke();
+    var len=Math.sqrt(Math.pow(b.x-a.x,2)+Math.pow(b.y-a.y,2));
+    if(len<1)continue;
+    // Perpendicular offset for curve
+    var nx=-(b.y-a.y)/len, ny=(b.x-a.x)/len;
+    var wave=Math.sin(t*3+i*1.2)*len*0.18;
+    var cx2=(a.x+b.x)/2+nx*wave, cy2=(a.y+b.y)/2+ny*wave;
+    // Hue cycles per segment
+    var hue=(i*47+t*60)%360;
+    var h2=(hue+60)%360;
+    function hsl(h,s,l){return 'hsl('+h+','+s+'%,'+l+'%)';}
+    // Outer glow
+    MX.shadowColor=hsl(hue,100,60); MX.shadowBlur=20;
+    var gd=MX.createLinearGradient(a.x,a.y,b.x,b.y);
+    gd.addColorStop(0,hsl(hue,100,65)); gd.addColorStop(1,hsl(h2,100,65));
+    MX.strokeStyle=gd; MX.lineWidth=8; MX.lineCap='round';
+    MX.beginPath(); MX.moveTo(a.x,a.y); MX.quadraticCurveTo(cx2,cy2,b.x,b.y); MX.stroke();
+    // Mid
+    MX.shadowBlur=8;
+    var gd2=MX.createLinearGradient(a.x,a.y,b.x,b.y);
+    gd2.addColorStop(0,hsl(hue,100,80)); gd2.addColorStop(1,hsl(h2,100,80));
+    MX.strokeStyle=gd2; MX.lineWidth=3.5;
+    MX.beginPath(); MX.moveTo(a.x,a.y); MX.quadraticCurveTo(cx2,cy2,b.x,b.y); MX.stroke();
+    // White core
+    MX.strokeStyle='rgba(255,255,255,0.9)'; MX.lineWidth=1.2; MX.shadowBlur=3;
+    MX.beginPath(); MX.moveTo(a.x,a.y); MX.quadraticCurveTo(cx2,cy2,b.x,b.y); MX.stroke();
+    // Stars along curve
+    for(var s=1;s<=4;s++){
+      var tt=s/5;
+      var sx=Math.pow(1-tt,2)*a.x+2*(1-tt)*tt*cx2+tt*tt*b.x;
+      var sy=Math.pow(1-tt,2)*a.y+2*(1-tt)*tt*cy2+tt*tt*b.y;
+      var sr=2+Math.sin(t*4+s*1.3)*1.2;
+      MX.fillStyle=hsl((hue+s*30)%360,100,80);
+      MX.shadowColor=hsl((hue+s*30)%360,100,60); MX.shadowBlur=10;
+      MX.beginPath(); MX.arc(sx,sy,sr,0,Math.PI*2); MX.fill();
+    }
   }
+  MX.shadowColor='transparent'; MX.shadowBlur=0;
   MX.restore();
+  // Animate continuously while letters selected
+  if(sel.length>=2) requestAnimationFrame(draw);
 }
 
 // ── FACE/BUBBLE HELPERS ──────────────────────────────────
@@ -485,32 +531,42 @@ function findNode(cx,cy){
 }
 
 function onS(cx,cy){
-  // iOS: speak() must be called from touchstart
   flushSpeech();
   var n=findNode(cx,cy);
   if(n===-1){
-    if(!ringZoomed){ showRingZoom(); }
+    if(ringZoomed){return;}
+    if(sel.length>0){sel=[];draw();renderWD();document.getElementById('msg').textContent='';}
+    else{showRingZoom();}
     return;
   }
-  if(n>=0){drag=true;sel=[n];setTimeout(playTouchSound,50);draw();renderWD();}
+  if(n>=0){
+    setTimeout(playTouchSound,30);
+    if(sel.length>0&&sel[sel.length-1]===n){
+      submit();
+    } else {
+      sel.push(n);
+      draw();renderWD();
+      document.getElementById('msg').textContent='';
+      var word=getCur();
+      if(NAMES.indexOf(word)>=0&&found.indexOf(word)<0){
+        setTimeout(function(){submit();},350);
+      } else if(!isValidPrefix(sel)){
+        playFunnySound();
+        setFace('sad_tear',1200);
+        document.getElementById('msg').textContent='❌ נסה שוב!';
+        setTimeout(function(){sel=[];draw();renderWD();document.getElementById('msg').textContent='';},800);
+      }
+    }
+  }
 }
-function onM(cx,cy){
-  if(!drag)return;
-  var n=findNode(cx,cy);
-  if(n>=0&&(sel.length===0||sel[sel.length-1]!==n)){sel.push(n);setTimeout(playTouchSound,50);draw();renderWD();}
-}
-function onE(){
-  if(!drag&&sel.length===0)return;
-  drag=false;submit();
-}
+function onM(cx,cy){}
+function onE(){}
 
 MC.addEventListener('touchstart',function(e){e.preventDefault();e.stopPropagation();if(e.touches.length)onS(e.touches[0].clientX,e.touches[0].clientY);},{passive:false,capture:true});
 MC.addEventListener('touchmove', function(e){e.preventDefault();e.stopPropagation();if(e.touches.length)onM(e.touches[0].clientX,e.touches[0].clientY);},{passive:false,capture:true});
 MC.addEventListener('touchend',  function(e){e.preventDefault();e.stopPropagation();onE();},{passive:false,capture:true});
 MC.addEventListener('touchcancel',function(e){e.preventDefault();drag=false;sel=[];draw();renderWD();},{passive:false,capture:true});
-MC.addEventListener('mousedown',function(e){onS(e.clientX,e.clientY);});
-MC.addEventListener('mousemove',function(e){if(drag)onM(e.clientX,e.clientY);});
-window.addEventListener('mouseup',function(){onE();flushSpeech();});
+MC.addEventListener('click',function(e){onS(e.clientX,e.clientY);});
 
 // ── GAME ─────────────────────────────────────────────────
 function getCur(){return sel.map(function(i){return tokens[i];}).join('');}
@@ -546,7 +602,9 @@ function submit(){
       });
     });
     drawCW();
-    setFace('wink',1500);draw();
+    setFace('wink',1500);
+    // Show word as HTML overlay in center of screen
+    showWordPopup(word);
     msg.textContent='✨ '+word+' – נמצא!';
     var ch=document.createElement('div');ch.className='fc';ch.textContent=word;
     document.getElementById('found').appendChild(ch);
@@ -615,66 +673,51 @@ document.getElementById('zoom-overlay').addEventListener('click',function(){
 
 document.getElementById('cw-wrap').addEventListener('click',function(){flushSpeech();showZoom();});
 
+
 // ── RING ZOOM ────────────────────────────────────────────
-var ringZoomed = false;
-var ringZoomTimer = null;
-
+var ringZoomed=false,ringZoomTimer=null;
 function showRingZoom(){
-  ringZoomed = true;
-  var scale = Math.min(window.innerWidth, window.innerHeight) / SZ * 1.0;
-  MC.style.position = 'fixed';
-  MC.style.top = '50%';
-  MC.style.left = '50%';
-  MC.style.transform = 'translate(-50%,-50%) scale('+scale+')';
-  MC.style.transformOrigin = 'center center';
-  MC.style.zIndex = '300';
-  MC.style.boxShadow = '0 0 0 9999px rgba(0,0,50,0.92)';
-  MC.style.borderRadius = '50%';
-  // Hide all other elements
+  ringZoomed=true;
+  var scale=Math.min(window.innerWidth,window.innerHeight)/SZ*1.0;
+  MC.style.position='fixed';MC.style.top='50%';MC.style.left='50%';
+  MC.style.transform='translate(-50%,-50%) scale('+scale+')';
+  MC.style.transformOrigin='center center';MC.style.zIndex='300';
+  MC.style.boxShadow='0 0 0 9999px rgba(0,0,50,0.92)';MC.style.borderRadius='50%';
   ['cw-wrap','intro-msg','timed-msg','msg','pbar','found','wd'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(el) el.style.visibility='hidden';
+    var el=document.getElementById(id);if(el)el.style.visibility='hidden';
   });
 }
-
 function hideRingZoom(){
-  ringZoomed = false;
-  MC.style.position = '';
-  MC.style.top = '';
-  MC.style.left = '';
-  MC.style.transform = '';
-  MC.style.transformOrigin = '';
-  MC.style.zIndex = '';
-  MC.style.boxShadow = '';
-  MC.style.borderRadius = '';
-  if(ringZoomTimer){ clearTimeout(ringZoomTimer); ringZoomTimer=null; }
-  // Restore all hidden elements
+  ringZoomed=false;
+  MC.style.position='';MC.style.top='';MC.style.left='';
+  MC.style.transform='';MC.style.transformOrigin='';MC.style.zIndex='';
+  MC.style.boxShadow='';MC.style.borderRadius='';
   ['cw-wrap','intro-msg','timed-msg','msg','pbar','found','wd'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(el) el.style.visibility='';
+    var el=document.getElementById(id);if(el)el.style.visibility='';
   });
 }
-
-// Close zoom when tapping dark area outside the canvas
-document.addEventListener('touchstart', function(e){
-  if(!ringZoomed) return;
-  // If touch is NOT on MC canvas, close zoom
-  if(e.target !== MC){
-    e.preventDefault();
-    hideRingZoom();
-  }
-}, {passive:false});
-document.addEventListener('click', function(e){
-  if(!ringZoomed) return;
-  if(e.target !== MC){ hideRingZoom(); }
-});
-
+document.addEventListener('touchstart',function(e){if(!ringZoomed)return;if(e.target!==MC){e.preventDefault();hideRingZoom();}},{passive:false});
+document.addEventListener('click',function(e){if(!ringZoomed)return;if(e.target!==MC)hideRingZoom();});
+// ── WORD POPUP ───────────────────────────────────────────
+var wordPopupTimer=null;
+function showWordPopup(word){
+  var popup=document.getElementById('word-popup');
+  popup.innerHTML='<div id="wpt" style="font-family:Helvetica,Arial,sans-serif;font-size:72px;font-weight:900;color:#fff;text-shadow:0 0 30px #FFD700,0 0 60px #FFD700,0 4px 8px rgba(0,0,0,0.8);letter-spacing:4px;direction:rtl;transition:opacity 0.4s;opacity:1;">'+word+'</div>';
+  popup.style.display='flex';
+  if(wordPopupTimer)clearTimeout(wordPopupTimer);
+  wordPopupTimer=setTimeout(function(){
+    var t=document.getElementById('wpt');
+    if(t)t.style.opacity='0';
+    setTimeout(function(){popup.style.display='none';},400);
+  },2000);
+}
 
 // ── INIT ─────────────────────────────────────────────────
 drawCW();draw();updatePBar();
 
 }); // end window.onload
 </script>
+<div id="word-popup" style="display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;pointer-events:none;"></div>
 <div id="zoom-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,50,0.88);z-index:200;align-items:center;justify-content:center;flex-direction:column;">
   <div style="color:#fff;font-size:14px;font-weight:800;margin-bottom:8px;">📋 לחץ לסגירה</div>
   <canvas id="cw-zoom" style="border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);"></canvas>
