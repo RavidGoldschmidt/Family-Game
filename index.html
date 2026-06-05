@@ -621,7 +621,7 @@ var ringZoomTimer = null;
 
 function showRingZoom(){
   ringZoomed = true;
-  var scale = Math.min(window.innerWidth, window.innerHeight) / SZ * 0.95;
+  var scale = Math.min(window.innerWidth, window.innerHeight) / SZ * 1.0;
   MC.style.position = 'fixed';
   MC.style.top = '50%';
   MC.style.left = '50%';
@@ -630,6 +630,11 @@ function showRingZoom(){
   MC.style.zIndex = '300';
   MC.style.boxShadow = '0 0 0 9999px rgba(0,0,50,0.92)';
   MC.style.borderRadius = '50%';
+  // Hide all other elements
+  ['cw-wrap','intro-msg','timed-msg','msg','pbar','found','wd'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.visibility='hidden';
+  });
 }
 
 function hideRingZoom(){
@@ -643,6 +648,11 @@ function hideRingZoom(){
   MC.style.boxShadow = '';
   MC.style.borderRadius = '';
   if(ringZoomTimer){ clearTimeout(ringZoomTimer); ringZoomTimer=null; }
+  // Restore all hidden elements
+  ['cw-wrap','intro-msg','timed-msg','msg','pbar','found','wd'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.visibility='';
+  });
 }
 
 // Close zoom when tapping dark area outside the canvas
