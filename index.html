@@ -534,12 +534,23 @@ function onS(cx,cy){
   flushSpeech();
   var n=findNode(cx,cy);
   if(n===-1){
+    if(petals===0){
+      // Reset — works in zoom mode too
+      if(ringZoomed) hideRingZoom();
+      petals=TP; found=[]; sel=[];
+      grid=buildGrid(); drawCW();
+      shuf(tokens);
+      setFace('happy',0);
+      document.getElementById('msg').textContent='';
+      document.getElementById('found').innerHTML='';
+      updatePBar(); draw(); renderWD();
+      return;
+    }
     if(ringZoomed){return;}
     if(sel.length>0){sel=[];draw();renderWD();document.getElementById('msg').textContent='';}
     else{showRingZoom();}
     return;
-  }
-  if(n>=0){
+  }  if(n>=0){
     setTimeout(playTouchSound,30);
     if(sel.length>0&&sel[sel.length-1]===n){
       submit();
@@ -551,10 +562,23 @@ function onS(cx,cy){
       if(NAMES.indexOf(word)>=0&&found.indexOf(word)<0){
         setTimeout(function(){submit();},350);
       } else if(!isValidPrefix(sel)){
+        // Mistake — lose a petal
         playFunnySound();
-        setFace('sad_tear',1200);
+        if(petals>0){
+          petals--;
+          setFace(petals===0?'crying':'sad_tear', petals===0?0:1300);
+          updatePBar();
+          if(petals===0){
+            setTimeout(function(){
+              document.getElementById('msg').textContent='🥀 כל העלים נפלו...';
+            },700);
+          }
+        }
         document.getElementById('msg').textContent='❌ נסה שוב!';
-        setTimeout(function(){sel=[];draw();renderWD();document.getElementById('msg').textContent='';},800);
+        setTimeout(function(){
+          sel=[];draw();renderWD();
+          document.getElementById('msg').textContent='';
+        },800);
       }
     }
   }
